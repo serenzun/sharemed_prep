@@ -1,0 +1,173 @@
+---
+title: "fishing_density"
+author: "SZ"
+date: "21/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
+
+med_mask <- st_read(file.path(dir_atlas, "boundaries_domains/World_Seas_IHO_v3/MED_regions_IHOv3.shp")) %>% 
+  group_by(med)%>%
+   summarise(geometry = sf::st_union(geometry)) %>%
+   ungroup()
+med_mask[1]
+plot(med_mask)
+
+fis_density <- raster(file.path(dir_atlas,"emodnet/vessel_density_emodnet/2020_st_01_avg.tif"))
+
+projection(fis_density) <-"+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +units=m +no_defs "
+proj_latlon <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+
+#rescale_fis_density <- projectRaster(fis_density, crs=proj_latlon,over=T,progress='text', filename=file.path(dir_atlas,"emodnet/vessel_density_emodnet/rescale_fis_density_2020_st_01_avg.tif"),overwrite=F)
+rescale_fis_density <- raster(file.path(dir_atlas,"emodnet/vessel_density_emodnet/rescale_fis_density_2020_st_01_avg.tif"))
+
+plot(rescale_fis_density)
+```
+
+
+```{r}
+rgn_med <-  st_read(file.path(dir_B,"prep/spatial/tmp/Regions_atl_FAO.shp")) %>% 
+  filter(F_CODE==37) %>% 
+  summarise(geometry = sf::st_union(geometry)) %>%
+  ungroup()
+rs_fis_dens <- crop(rescale_fis_density,rgn_med)
+plot(rs_fis_dens)
+med <- raster(file.path(dir_atlas, "/boundaries_domains/med2.tif"))
+projection(med ) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+plot(med)
+extent(rs_fis_dens) <- extent(med)
+dns_med <-     mask(rescale_fis_density,rgn_med)
+plot(dns_med)
+plot(rgn_med, add=TRUE)
+cntpnts <- c(0,0.5,2,5,10,20,100)
+rasterVis::levelplot(dns_med, margin=list(axis=TRUE), at=cntpnts)
+
+```
+the data are highly skewed, I need to log transform them
+```{r}
+dns_med_log = calc(dns_med ,fun=function(x){log(x+1)},progress='text')
+plot(dns_med_log)
+maxValue(dns_med_log)
+```
+
+
+```{r}
+hist(dns_med)
+r.min = cellStats(dns_med_log , "min")
+r.max = cellStats(dns_med_log , "max")
+maxValue(dns_med)
+dim(r.max)
+```
+
+
+```{r}
+r.scale <- ((dns_med_log  - r.min) / (r.max - r.min) )
+hist(r.scale)
+cutpnts <- c(0,0.001,0.01,0.05,0.08,1)
+rasterVis::levelplot(r.scale, margin=list(axis=TRUE), col.regions = colorRampPalette((brewer.pal(9, 'Oranges'))))
+plot(r.scale)
+
+```
+
+
+```{r}
+na_bound <- readOGR(file.path(dir_atlas,"boundaries_domains/NA_boundaries.shp"))
+fish_density_na <- crop(r.scale, na_bound)
+plot(r.scale)
+rasterVis::levelplot(fish_density_na, margin=list(axis=TRUE), col.regions = colorRampPalette((brewer.pal(9, 'Oranges'))))
+```
+We ipothesised an impact of the ghost-nets large as 7 km (maximum lenght of the nets)
+
+```{r}
+grid_na <- st_read(file.path(dir_atlas, "/boundaries_domains/NA_grid1-36_0.028_equal.shp")) #%>% 
+  select(id)
+
+grid_na_csv <- read.csv("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/boundaries_domains/NA_grid1-36_0.028_equal.csv") %>% 
+mutate(id=as.character(id))
+
+#cells_raster <- rasterFromXYZ(NA_grid1.36_0.028)
+#plot(cells_raster) 
+grid_na <- as(grid_na,  'Spatial')
+plot(grid_na)
+class(grid_na)
+grid_na_raster <-rasterize(grid_na,fish_density_na,field = grid_na$id,progress='text')
+plot(grid_na_raster, border='blue')+
+  plot(ghostnets, col="red" ,pch=3, add=TRUE)
+summary(grid_na_raster)
+extract(ghostnets,grid_na_raster,fun=sum)
+```
+```{r}
+ghostnets
+```
+
+```{r}
+r <- raster(extent(grid_na))
+  r[] <- 1:ncell(r)
+  r <- as(r, "SpatialPolygonsDataFrame")  
+
+plot(r)
+  plot(grid_na, add=TRUE) 
+  
+    r <- as(grid_na, "Spatial")  
+    plot(r)
+grid_na_raster <-fasterize::fasterize(r,med,field = "id")
+plot(grid_na_raster)
+    projectRaster(r, crs=proj_latlon,over=T,progress='text', filename=file.path(dir_atlas,"emodnet/vessel_density_emodnet/r_grid_na.tif"),overwrite=F)
+ projection(r) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"    
+    
+#    int <- raster::intersect( r,ghostnets)
+#    plot(int)
+#    m <- rgeos::gIntersection( r,ghostnets, byid=TRUE)
+#  row.names(m)
+```
+
+```{r}
+plot(fish_density_na)+
+plot(ghostnets, col="red" , add=TRUE)+
+plot(r, add=TRUE)
+class(ghostnets)
+# Convert 'sp' object 'meuse' (i.e. SpatialPointsDataFrame) into 'sf' object
+grid <- as(grid_na,  'Spatial')
+projection(grid) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"  
+ghn <- as(ghostnets,  'Spatial')
+ghostnets <-  st_as_sf(ghostnets)
+ghn<-  st_as_sf(ghn)
+library(stars)
+#grid s<-  st_as_stars(grid)
+plot(grid)
+proj4string(ghn)
+proj4string(grid)
+
+res2 <- over(ghn, grid)
+res2
+res2 <- unique(res2$id)
+res3 <- over(grid,ghn)
+
+sum(is.na(a$field_1)) 
+6883-6826
+plot(grid_na)+plot(ghn, add=TRUE)
+```
+```{r}
+p
+```
+
+```{r}
+fis_log <- calc(r.scale, fun=function(x)log(x+1))
+
+summary(r.scale)
+
+plot(fis_density)
+fis_log <- calc(fis_density, fun=function(x)log(x+1))
+plot(fis_log)
+vals <- getValues(fis_log)
+summary(vals)
+hist(vals)
+ref <- quantile(vals, 0.9999, na.rm=TRUE)
+ref_add <- data.frame(year="2020", quantile_9999 = as.numeric(ref))
+fisdensity_ref_pts <- rbind(fisdensity_ref_pts, ref_add)
