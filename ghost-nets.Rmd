@@ -1,0 +1,117 @@
+---
+title: "plastic_data"
+author: "SZ"
+date: "9/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
+
+med_mask <- st_read(file.path(dir_atlas, "/boundaries_domains/World_Seas_IHO_v3/MED_regions_IHOv3.shp")) %>% 
+  group_by(med)%>%
+   summarise(geometry = sf::st_union(geometry)) %>%
+   ungroup()
+med_mask[1]
+plot(med_mask)
+
+```
+
+capitaneria.d.porto <- read.csv("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/plastic/capitaneria d porto.csv", sep=";") %>% 
+  rename(Latitude=X) %>% 
+  rename(Longitude=Posizione) %>% 
+  rename(Date=Data.ritrovamento) %>% 
+  rename(weight=Peso.stimato.kg) %>% 
+  select(Latitude,Longitude,weight,Date)
+Reti.nella.Rete.Map <- read.csv("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/plastic/Reti nella Rete Map.csv", sep=";") %>% 
+  mutate(Date=Data) %>% 
+  rename(weight=X) %>% 
+  select(Latitude,Longitude,weight,Date)
+
+
+EMODNET_seafloor_litter_unrestricted_2021 <- read.csv("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/plastic/EMODNET_seafloor_litter_unrestricted_2021.csv", sep=",") %>% 
+  mutate(Latitude=ShootLat) %>% 
+  mutate(Longitude=ShootLong) %>% 
+  mutate(weight=LT_Weigth) %>% 
+  select(Latitude,Longitude,weight,Date)
+EMODNET_seafloor_litter_unrestricted_2021 
+
+
+ghostnetsl <-  rbind(capitaneria.d.porto ,Reti.nella.Rete.Map, EMODNET_seafloor_litter_unrestricted_2021) 
+ gn <-  rbind(ghostnetsl,)
+
+write.csv(ghostnetsl, "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/plastic/ghostnets2.csv")
+
+
+```{r}
+#on qgis esporta
+#ghostnets<- st_read(file.path(dir_atlas, "/plastic/ghostnets_all.shp")) %>% 
+#  select(field_1)
+ghostnets<- st_read(file.path(dir_atlas, "/plastic/emodnet_plastic_clean.shp"))%>% mutate(idnum ="1")
+ghostnets$idnum<- as.numeric(ghostnets$idnum )
+
+plot(ghostnets)
+ghostnets <- ghostnets %>% sf::st_as_sf(coords = c("long","lat"), crs = 4326)
+ 
+```
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\plastic\EMODNET_seafloor_litter_unrestricted_2021.csv"
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\plastic\capitaneria d porto.csv"
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\plastic\Reti nella Rete Map.csv"
+
+```{r}
+grid_na <- st_read(file.path(dir_atlas, "/boundaries_domains/NA_grid1-36_0.028.shp")) %>% 
+  select(id) %>%  st_set_crs(4326) %>% 
+  mutate(num=1)
+grid <- as(grid_na,  'Spatial')
+
+#a <- grid %>% sf::st_join(ghostnets, left = TRUE)
+
+a_na <- grid_na %>% sf::st_join(ghostnets, left = TRUE)
+plot(grid); plot(ghostnets[1],add=TRUE)
+
+a_na_sum <- a_na %>% 
+ group_by(id) %>% 
+  summarise(sum=sum(idnum, na.rm=T), geometry)
+ 
+ggplot() + geom_sf(data = a_na_sum , aes(fill = sum))
+
+grddf <- as.data.frame(grid_na)
+ggplot()
+
+
+#ghn <- as(ghostnets,  'Spatial')
+#ghn <- crop(ghn, na_bound)
+#ghn <- mask(ghn, na_bound)
+#plot()
+#ghn <- crop(ghn, grid)
+#ghostnets <- SpatialPointsDataFrame(ghn)
+
+#plot(ghn)
+#med <- raster(file.path(dir_atlas, "/boundaries_domains/med2.tif"))
+#
+
+
+
+install.packages("spatialrisk")
+library(spatialrisk)
+gemeente_sf <- points_to_polygon( grid_na , ghostnets, sum(num, na.rm = TRUE))
+```
+
+```{r}
+dt<-data.frame(lon=71.85,lat =31.12,val=3)
+dt
+plot(dt)
+ras_dom<-raster(xmn=150, xmx=180, ymn=25, ymx=35,
+                          crs="+proj=longlat +datum=WGS84 +no_defs ",
+                          resolution=c(0.1,0.1), vals=NA)
+ras_dom
+coordinates(dt) <- ~ lon + lat # Convert data frame to spatial object
+result <- rasterize(dt, ras_dom, "val", update = TRUE) # put point in raster
+reslt # The resulting raster with the point added
+plot(result)
+```
+

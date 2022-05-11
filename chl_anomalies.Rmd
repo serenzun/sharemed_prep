@@ -1,0 +1,52 @@
+---
+title: "chl_anomalies"
+author: "SZ"
+date: "2/3/2022"
+output: html_document
+---
+ti allego il netCDF della severità media associata alla clorofilla superficiale con cui ho costruito la figura 5e dell'articolo.
+La griglia è curvilinea (nel netCDF trovi anche le matrici di longitudine e latitudine) e l'unità di misura della severità è: kg/(km^2 d). Il dominio è open sea, nel senso che include solo i punti con profondità maggiore di 200 metri, mentre i punti "costieri" hanno un valore di default di 1.0e+20. 
+Dimmi se ti fa più comodo che i punti costieri abbiano valori negativi o altro, nel caso ti ripreparo al volo il file.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
+chl_anom <- nc_open("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/chl_valeria/Severity_EEW.nc")
+chl_anom <- raster("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/chl_valeria/Severity_EEW_bis.nc")
+chl_anom
+plot(chl_anom)
+```
+
+
+```{r cars}
+projection(chl_anom) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+chl_anom
+rlon<-rlat<-chl_anom
+ library(raster)
+  xy<-raster::xyFromCell(r,1:length(r))
+```
+```{r}
+ncdf <- nc_open("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/chl_valeria/Severity_EEW.nc")
+lon <- ncvar_get(ncdf,"lon")
+nlon <- dim(lon)
+head(lon)
+
+lat <- ncvar_get(ncdf,"lat")
+nlat <- dim(lat)
+head(lat)
+
+t <- ncvar_get(ncdf,"Severity")
+t
+
+dname <- "Severity"
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

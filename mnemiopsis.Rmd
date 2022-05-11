@@ -1,0 +1,226 @@
+---
+title: "Mnemiopsis"
+author: "SZ"
+date: "28/9/2021"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(raster)       #Main raster library with nearly all functions used in this analysis
+library(rgdal)        #Spatial library - most functions used from rgdal are for vectors (shapefiles)
+library(dplyr)        #NOT spatial - this is a data wrangling library
+library(ggplot2)
+library(here)
+library(tidyverse)
+library(ncdf4)
+library(raster)
+library(RColorBrewer)
+library(sf)
+library(ncdf4)
+library("viridis") 
+library(cmocean)#color map from 
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+#source(here::here("R","spatial_layer.R"))
+library(colorRamps)
+col <- colorRamps::matlab.like2
+mnemiopsis<-file.path ("C:/Users/Acer/Google Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/mnemiopsis")
+
+```
+
+## Menemiopsis_TIrelli
+```{r}
+avvistapp_1920 <- read.csv("C:/Users/Acer/Google Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/mnemiopsis/avvistapp_1920.csv") %>% 
+  select(c(3,5,6,8))
+  
+ avvistapp_1920$date <- format(as.Date((avvistapp_1920$day), format = "%d/%m/%Y"), format = "%Y_%m")
+# as.number(avvistapp_1920[5])
+ avvistapp_1920$week <- format(as.Date((avvistapp_1920$day), format = "%d/%m/%Y"), format = "%W")
+#  group_by(year = year(day), week = week(day)) 
+#
+ggplot(avvistapp_1920, aes(x=longitudine, y=latitudine, col=measurementValue))+
+         geom_point() +
+ scale_color_gradientn(colours = rainbow(3))+
+  facet_wrap(~ date)
+```
+
+```{r}
+# store bounding box coordinates
+adr_bb <- c(
+  left = 11,
+  bottom = 43,
+  right = 15,
+  top = 46
+)
+
+#adr_stamen <- get_stamenmap(
+#  bbox = adr_bb,
+#  zoom = 11
+#)
+
+## 627x712 terrain m
+
+```
+
+```{r}
+library(maps)
+library(ggmap)
+#ggmap()
+#myLocation  <-  c(11,  43,  15,  46) 
+#maptype  =  c("terrain",  "toner", "watercolor") 
+#  adriaticsea<- get_map(myLocation, source="stamen",  maptype="watercolor",crop=FALSE, #zoom=10)
+
+ # map <- get_stamenmap( bbox = c(left = 11, bottom =43, right = 16, top = 46), zoom = 4, maptype = "watercolor")
+  
+#  plot(adriaticsea)
+avvistapp_08_19 <- avvistapp_1920 %>% 
+  select(1:6) %>% 
+  filter(date %in% c("2019_08","2019_09")) %>% 
+  mutate(month_integer = as.Date(day))  
+
+p <- ggplot(avvistapp_08_19 , aes(x=longitudine, y=latitudine, col=measurementValue))+
+         geom_point()+
+         facet_wrap(~ week )
+p
+```
+
+Dalla 32° settimana alla 37° c'è il bloom di M.leidy
+
+```{r}
+ggplotly(p)
+
+```
+```{r}
+avvistapp_08_19 <- avvistapp_08_19 %>% 
+  mutate(date2=as.Date(avvistapp_08_19$day, "%d/%m/%Y"))
+  
+library(lubridate)
+
+new_date<- as.Date(avvistapp_08_19$day, "%d/%m/%Y")
+
+library(gganimate)
+#p + transition_time(avvistapp_08_19$date2 ) +
+#  labs(title = "Day: {frame_time}")
+
+```
+
+```{r}
+plot19 <- ggplot(avvistapp_08_19, aes(x=longitudine, y=latitudine, col=measurementValue))+
+         geom_point()
+
+
+library("ggmap")
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+plot19_adr <- ggplot(data = world) +
+  geom_sf() +
+  annotation_scale(location = "bl", width_hint = 0.5) +
+  annotation_north_arrow(location = "bl", which_north = "true", 
+                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  coord_sf(xlim = c(12,15), ylim = c(45,46))+
+    geom_point(avvistapp_08_19, mapping=aes(x=longitudine, y=latitudine, col=measurementValue))
+
+   plot19_adr
+   plot19 + transition_time(avvistapp_08_19$date2 ) +
+  labs(title = "Day: {frame_time}")
+   
+   
+  plot19_adr <-  plot19_adr+ transition_time(avvistapp_08_19$date2 ) +
+  labs(title = "Day: {frame_time}")
+anim_save(file.path(dir_B, "plot19_adr.gif"), animation = last_animation())
+```
+
+```{r}
+# Bin size control + color palette
+#ggplot(data, aes(x=x, y=y) ) +
+##  geom_bin2d(bins = 70) +
+##  scale_fill_continuous(type = "viridis") +
+#  theme_bw()
+```
+
+```{r}
+ggplot(data = world) +
+  geom_sf() +
+  annotation_scale(location = "bl", width_hint = 0.5) +
+  annotation_north_arrow(location = "bl", which_north = "true", 
+                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  coord_sf(xlim = c(11,16), ylim = c(43,46))+
+    geom_point(avvistapp_08_19, mapping=aes(x=longitudine, y=latitudine, col=measurementValue))
+
+```
+
+```{r}
+#recall the intersection polygon for the gulf of Trieste "gt"
+
+gt <- st_read("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/gt.shp")
+crsAdr <- crs("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+avvist_aug_19_shp <- SpatialPointsDataFrame(avvistapp_08_19[,2:3],
+                        avvistapp_08_19, 
+                        proj4string=crsAdr)
+
+
+mne_19 <- st_read("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/mne_19.shp")#I've saved the cdv in qgis
+
+
+
+mn_agust_19_ts <- st_intersection(gt, mne_19)
+plot(mn_agust_19_ts[4])+
+plot(gt)
+
+#qua non ha funzionato un cazizus  ho estrato su qgis
+```
+
+
+```{r}
+mne_19_golfotrieste <- st_read("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/mne_19_golfotrieste.shp")#I've saved the csv
+ggplot(mne_19_golfotrieste,)
+
+ mne_19_golfotrieste <- mne_19_golfotrieste %>% 
+   mutate(day = as.Date(day, "%d/%m/%Y")) %>%
+  arrange(day) %>% 
+   mutate(abundance=as.factor(measurem_1))
+
+st_write(mne_19_golfotrieste, "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/mne_19_golfotrieste.csv",coords = TRUE)
+library("ggspatial")
+library("rnaturalearth")
+library("rnaturalearthdata")
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+ggplot(data = world) +
+  geom_sf() +
+  annotation_scale(location = "bl", width_hint = 0.5) +
+  annotation_north_arrow(location = "bl", which_north = "true", 
+                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  coord_sf(xlim = c(12,15), ylim = c(45,46))+
+    geom_point(mne_19_golfotrieste, mapping=aes(x=longitudin, y=latitudine, col=measurem_1))
+```
+
+```{r}
+b <- mne_19_golfotrieste%>% 
+  group_by(measurem_1)
+```
+
+
+```{r}
+ggplot(mne_19_golfotrieste, aes(x=day, y=measurem_1,group=id))+
+  geom_line()  + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+```{r}
+
+
+ggplot(mne_19_golfotrieste, aes(x=day, color=abundance))+
+  geom_density()  +   
+  scale_x_date(date_labels="%d %m",date_breaks  ="1 week")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+mne_19_golfotrieste$measurem_1
+```

@@ -1,0 +1,260 @@
+---
+title: "TRIX_sharemed"
+author: "SZ"
+date: "28/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(raster)       #Main raster library with nearly all functions used in this analysis
+library(rgdal)        #Spatial library - most functions used from rgdal are for vectors (shapefiles)
+library(dplyr)        #NOT spatial - this is a data wrangling library
+library(ggplot2)
+library(here)
+library(tidyverse)
+library(ncdf4)
+library(raster)
+library(RColorBrewer)
+library(sf)
+library(ncdf4)
+library("viridis") 
+library(cmocean)#color map from 
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+library(colorRamps)
+col <- colorRamps::matlab.like2
+trix_all<-file.path ("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/")
+list.files(trix_all)
+trix_all_files=list.files(trix_all,pattern="^TRIX.*nc", full.names=TRUE)
+
+
+trix_2017 <- nc_open("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc")
+trix_2017_00 <- stack("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc" ,varname="TRIX_0_0")
+hist(trix_2017_00)
+trix_2017_150 <- stack("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc" ,varname="TRIX_0_150")
+```
+
+
+```{r setup, include=FALSE}
+
+hist(trix_2017_150)
+plot(trix_2017_00, col=col(140))
+
+trix_2017
+```
+
+## Trix index on the Cadeau dominio
+
+ The TRIX index is based on four state variables (n ),
+which are directly related to productivity: chlorophyll a
+ (Chl, mg/m3 ), oxygen as the absolute percentage deviation
+from oxygen saturation (DO, %), dissolved inorganic nitrogen
+(DIN, mg/m3, and total phosphorous (TP, mg/m3.
+In particular, DIND N-NO3 C N-NO2 C N-NH4  and DOD
+|100- Ox | , where Ox  is the oxygen saturation. Each state
+variable is scaled by the highest (Ui  ) and the lowest (Li  ) values
+in the data time series, and TRIX is defined as
+
+
+ $$TRIX= \frac {k}{n}\sum_{i=1}^n\frac{(logM_i-logL_i)}{(logU_i-logL_i)} $$
+The TRIX index was developed b Vollenweider et al. (1992)
+
+
+E. Fiori et al.: Trophic index (TRIX) values for the Adriatic Sea basin   
+
+TRIX units |	Conditions  |Trophic state
+-----------|--------------|--------------
+0–4        | Oligotrophic |Elevated        	
+4–5        |              |Good          	
+5–6        |              |Mediocre     
+6–10       |Eutrophic     |Bad     	
+
+In addition to TRIX, an efficiency coefficient can also be
+defined (Giovanardi and Vollenweider, 2004) as the logarithm
+of the ratio between the two aggregated main components
+of the TRIX. The efficiency coefficient can be considered a supplementary
+index with which to evaluate the nutrient utilization of
+the system. 
+
+$$eff.coeff= log\biggl( \frac{Chl \times Do}{DIN \times TP}\biggl)$$
+
+C'e' un file per anno
+Ogni file contiene 5 variabili: TRIX, OXY_dev_da_sat_perc, DIN, TP, CHL in mg/m3
+Ogni variabile contiene 12 frame (uno al mese)
+Ci sono 3 calcoli delle medie verticali:
+_0_0 solo strato superficiale
+_0_25 media dei primi 25 m
+_0_150 media dei primi 150 m
+```{r signle year}
+trix_2017 <- nc_open("C:/Users/Acer/Google Drive/ASSEGNO DI RICERCA/SHAREMED_mio/TRIX/TRIX2017.nc")
+
+```
+
+```{r TRIX 00_ 2006-2017}
+year <- c(2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017)#Once you have a stack 
+
+
+trix_0_0<-stack(trix_all_files, varname="TRIX_0_0")
+
+trix_0_150<-stack(trix_all_files, varname="TRIX_0_150")
+#names(trix_0_0) <- paste0(rep(2006:2017, each=12),sep="_", 1:12)
+#month(trix_0_0) <- paste0(rep(2006:2017, each=12),sep="_", 1:12)
+#year <- format(as.Date(names(trix_0_0), format = "X%Y"), format = "%Y")
+#month <- format(as.Date(names(trix_0_0), format = "X%Y_%d"), format = "%m")
+#trix_0_0
+#trix_0_0[[names]]
+
+hist(trix_0_150)
+
+# add time dimension and names
+date <- seq(as.Date("2006-01-01"),as.Date("2017-12-01"), "months")
+
+names(trix_0_0) <- date
+
+#get the date from the names of the layers and extract the month
+indices <- format(as.Date(names(trix_0_0), format = "X%Y.%m.%d"), format = "%m")
+indices <- as.numeric(indices)
+trix_0_0
+```
+
+
+```{r monthly mean}
+MonthTRIX00<- stackApply(trix_0_0, indices, fun = mean)
+names(MonthTRIX00) <- month.abb
+
+cols <- colorRampPalette(c("red", "yellow", "lightgreen"))(length(breaks)-1)
+rasterVis::levelplot(MonthTRIX00,col.regions=colorRampPalette(rev(brewer.pal(11, 'RdBu'))))
+col <- colorRamps::matlab.like2
+rasterVis::levelplot(MonthTRIX00,col.regions=col(20), main="monthly mean")
+```
+
+
+```{r monthly sd}
+sd_monthlyTrix00 <-  stackApply(trix_0_0, indices, fun = sd)
+rasterVis::levelplot(sd_monthlyTrix00,col.regions=colorRampPalette((brewer.pal(16, 'Reds'))), main="monthly sd")
+```
+
+
+```{r TRY TRIX 00 12/2017}
+plot(trix_0_0[[144]])
+```
+##calculate the climatological mean
+
+```{r YEARLY AVERAGE TRIX}
+year <- format(as.Date(names(trix_0_0), format = "X%Y"), format = "%Y")
+yr_trix_00 = stackApply(trix_0_0, indices=year, fun=mean)
+
+col <- colorRamps::matlab.like2
+plot(yr_trix_00, col=col(40),  zlim = c(2, 7))
+col <- colorRamps::matlab.like2
+#rasterVis::levelplot(yr_trix_00,col.regions=col(20), main="monthly mean")
+rasterVis::levelplot(yr_trix_00,col.regions=colorRampPalette((brewer.pal(9, 'YlOrBr'))), main="Annual mean")
+
+
+```
+
+
+```{r yearly sd}
+
+sd_AnnualTrix00 <-  stackApply(trix_0_0, year, fun = sd)
+rasterVis::levelplot(sd_AnnualTrix00,col.regions=colorRampPalette((brewer.pal(16, 'Reds'))), main="Year sd")
+```
+
+
+```{r}
+plot(yr_trix_00[[12]], col=col(140), main="index_2017")
+
+```
+
+```{r}
+# create histograms of each raster
+hist(yr_trix_00, 
+     xlim = c(0, 9))
+```
+
+```{r ANOMALY}
+yr_trix_00 = stackApply(trix_0_0, indices=year, fun=mean)
+summary(trix_0_0)
+trix_00_2017 <- yr_trix_00[[12]]
+
+
+anomalies_trix00<-overlay(yr_avg_18_chl_2,yr_avg_clim_chl_2 , fun=function(r1, r2){return(r1-r2)})
+```
+```{r 150}
+year <- format(as.Date(names(trix_0_150), format = "X%Y"), format = "%Y")
+yr_trix_150 = stackApply(trix_0_150, indices=year, fun=mean)
+
+col <- colorRamps::matlab.like2
+plot(yr_trix_00, col=col(40),  zlim = c(2, 7))
+col <- colorRamps::matlab.like2
+#rasterVis::levelplot(yr_trix_00,col.regions=col(20), main="monthly mean")
+rasterVis::levelplot(yr_trix_00,col.regions=colorRampPalette((brewer.pal(9, 'YlOrBr'))), main="Annual mean")
+
+
+```
+
+
+```{r Intensity?}
+
+
+trix_eutrof <- calc(trix_0_0, fun=function(x)
+  {ifelse(x<4, 0, x)})
+rasterVis::levelplot(trix_eutrof,col.regions=colorRampPalette((brewer.pal(9, 'YlOrBr'))), main="Annual mean")
+
+
+
+#somma su climatologia con valori oligotrofici eliminati
+trix_sum
+trix_sum_yr = stackApply(trix_eutrof, fun=sum)#mi dà somma anno per anno
+trix_sum <- calc(trix_eutrof, sum)
+hist(trix_sum)
+plot(trix_sum)
+trix_sum                                  #0, 1034.393  (min, max)
+     xlim = c(0, 9))
+rasterVis::levelplot(trix_sum,col.regions=colorRampPalette((brewer.pal(9, 'YlOrBr'))), main="Annual mean")
+
+
+trix_intensity <- calc(trix_sum, fun=function(x){ifelse(x=0,x, (x/max))}
+                       
+                        (max-min)/max)
+```
+```{r}
+trix_0_150
+summary(trix_0_150)
+ #reclassify per avere presenza/assenza di eutrofia
+
+trix_0_150_rec<-reclassify(trix_0_150, c(-Inf,3.99,0))     #tutti i valori da -inf a4(Fiore eurtrof!!) valgono zero
+trix_0_150_rec<-reclassify(trix_0_150_rec, c(3.99,+Inf,1)) 
+plot(trix_0_150_rec)
+trix_0_150_cnt <- calc(trix_0_150_rec, fun=sum)        #Fiore dice che sotto è oligotr.
+plot(trix_0_150_cnt)
+```
+
+#to rescale(rescale)
+For reference, to simply scale between 0 and 1
+
+mnv <- cellStats(s,'min')
+mxv <- cellStats(s,'max')
+x <- (s - mnv) / (mxv - mnv)
+```{r}
+
+
+mnv <- cellStats(trix_0_150_cnt,'min')
+mxv <- cellStats(trix_0_150_cnt,'max')
+x <- (trix_0_150_cnt - mnv) / (mxv - mnv)
+plot(x)
+
+
+
+trix_0_150_cnt_easy <- calc(trix_0_150, fun=function(x){sum(x>4)})   #funzionava uguale!
+hist(log(trix_0_150_cnt))
+plot(trix_0_150_cnt, col.regions=colorRampPalette((brewer.pal(16, 'Reds'))))
+
+rasterVis::levelplot(x,col.regions=colorRampPalette((brewer.pal(16, 'Reds')))) 
+writeRaster(x, file.path(dir_atlas,"TRIX/x.nc"))
+x <- raster(file.path(dir_atlas,"TRIX/x.nc"))
+rasterVis::levelplot(x,col.regions=colorRampPalette((brewer.pal(16, 'Oranges')))) 
+```
+

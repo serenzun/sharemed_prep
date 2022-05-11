@@ -1,0 +1,80 @@
+---
+title: "spatial_boundaries"
+author: "SZ"
+date: "21/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
+na_bound <- readOGR(file.path(dir_atlas,"boundaries_domains/NA_boundaries.shp"))
+s <- plot(na_bound)
+# Background 2: World Imagery
+library(leaflet)
+m <- leaflet() %>% 
+   addTiles() %>% 
+   setView( lng = 2.34, lat = 48.85, zoom = 3 ) %>% 
+   addProviderTiles("Esri.WorldImagery")
+
+
+m 
+
+med_mask <- st_read(file.path(dir_atlas, "/boundaries_domains/World_Seas_IHO_v3/MED_regions_IHOv3.shp")) %>% 
+   group_by(med)%>%
+   summarise(geometry = sf::st_union(geometry)) %>%
+   ungroup()
+plot(med_mask)
+
+#med ottenuto convertendo da vetttore a raster su qgis. 0.001 di ris oriz e vert
+med <- raster(file.path(dir_atlas, "/boundaries_domains/med2.tif"))
+projection(med ) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+plot(med)
+rescale_med <- projectRaster(med, crs=proj_latlon,over=T,progress='text', filename=file.path(dir_atlas,"/boundaries_domains/resc_med.tif"),overwrite=F)
+
+```
+
+```{r}
+rgn_med <-  st_read(file.path(dir_B,"prep/spatial/tmp/Regions_atl_FAO.shp")) %>% 
+  filter(F_CODE==37) %>% 
+  summarise(geometry = sf::st_union(geometry)) %>%
+  ungroup()
+plot(rgn_med)
+```
+
+I transform the emodnet data of fishing vessel density in the scale 0-1
+then
+```{r}
+na_bound <- readOGR(file.path(dir_atlas,"boundaries_domains/NA_boundaries.shp"))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+grid_na <- st_read(file.path(dir_atlas, "/boundaries_domains/NA_grid1-36_0.028.shp")) %>% 
+  select(id)
+plot(grid_na)
+
+
+grid_na <- shapefile(file.path(dir_atlas, "/boundaries_domains/NA_grid1-36_0.028.shp")) %>% 
+  select(id) %>% 
+  mutate(num=1)
+grid <- as(grid_na,  'Spatial')
+
+grid <- rasterize(grid,)
+
+
+
+ext <- raster::extent(12.22266, 43.47266 ,16.07422, 45.80891)
+ext <- raster::extent(-180.0, 180, -90.0, 90.0)
+
+grid <- st_bbox(ext) %>% 
+  st_make_grid(cellsize = 0.5, what = "polygons") %>%
+  st_set_crs(4326)
+grid <- grid %>% st_sf() %>% mutate(id_cell = seq_len(nrow(.)))
+plot(grid)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
