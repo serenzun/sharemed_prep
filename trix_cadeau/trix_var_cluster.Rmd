@@ -273,7 +273,7 @@ st_0_0crop<- crop(st_0_0mask,na_shp, progress='text')
 st_00_mean <- calc(st_0_0crop, mean)
 #writeRaster(ss_00_mean ,filename = file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/ss_00_mean.tif"), format="GTiff", overwrite=TRUE)
 
-st_00_mean_df <- rasterToPoints(st_00_mean) %>% as.data.frame() %>% rename(st=layer)%>% mutate_at(1:2, round, 4)
+st_00_mean_df <- rasterToPoints(st_00_mean) %>% as.data.frame() %>% rename(sst=layer)%>% mutate_at(1:2, round, 4)
 cadeau_00_st<- left_join(cadeau_00_st,st_00_mean_df,by=c("x","y"))
 
 
@@ -351,6 +351,28 @@ mapview(result_4b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE
 
 ```
 
+```{r 16}
+# Collect results for plotting
+group_16 <- kmeans(cadeau_00_st_var, centers=16, nstart=100)
+result_16 <- cbind(group_16$cluster,cadeau_00_st_var)
+# Interpreting result
+result_16$group <- as.factor(group_16$cluster) 
+result_16$'group_16$cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+library(DataExplorer)
+plot_boxplot(result_16, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_16, group_16$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_16b <- cbind(group_16$cluster,cadeau_00_st)
+result_16b$group <- as.factor(group_16$cluster) 
+mapview(result_16b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+```
+
 ```{r tpr_lat_long_sf}
 
 pr <- result_4b %>% select(c(group,x,y))
@@ -394,7 +416,40 @@ https://mpadge.github.io/spatialcluster/
 #https://spatialanalysis.github.io/workshop-notes/spatial-autocorrelation.html
 library(spdep)
 library (spatialcluster)
+library(sfExtras)
+#remotes::install_github("spatialanalysis/sfExtras")
 
+cadeau_00_st_var <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st_var.csv")) 
+cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv")) 
+
+cadeau_00_st_var <- read.csv(file.path("~/github/sharemed_prep/trix_cadeau/cadeau_00_st_var.csv"))
+xy <- cadeau_00_st %>% select(x,y)
+dmat <-cadeau_00_st %>%select(4:9)
+
+library (spatialcluster)
+scl <- scl_full (xy, dmat, ncl = 2)
+plot (scl)
+# Define coordinate reference system
+prj4string <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+my.projection <- st_crs(prj4string)
+
+
+
+# Create sf object
+cadeau_00_st_lat_long_sf <- st_as_sf(cadeau_00_st, coords = c("x", "y"), crs = my.projection)
+st_crs(cadeau_00_st_lat_long_sf)
+st_write(cadeau_00_st_lat_long_sf,
+         "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp", driver = "ESRI Shapefile")
+
+cadeau_00_st_lat_long_sf <- readOGR(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp"))
+cadeau_00_st_utm <- spTransform(cadeau_00_st_lat_long_sf , CRS("+proj=utm +zone=33
++ellps=WGS84 +datum=WGS84 +units=m +no_defs +towgs84=0,0,0"))
+
+plot(cadeau_00_st_utm )
+cadeau_00_st_utm_sf <- sf::st_as_sf(cadeau_00_st_utm)
+cadeau_00_st_queen <- st_queen(cadeau_00_st_utm_sf )
+
+scl_redcap() 
 
 options(repos = c(
                   mpadge = 'https://mpadge.r-universe.dev',
