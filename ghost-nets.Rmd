@@ -15,7 +15,7 @@ dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atla
 med_mask <- st_read(file.path(dir_atlas, "/boundaries_domains/World_Seas_IHO_v3/MED_regions_IHOv3.shp")) %>% 
   group_by(med)%>%
    summarise(geometry = sf::st_union(geometry)) %>%
-   ungroup()
+   ungroup() 
 med_mask[1]
 plot(med_mask)
 

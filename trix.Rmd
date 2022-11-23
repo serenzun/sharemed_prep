@@ -88,7 +88,7 @@ _0_0 solo strato superficiale
 _0_25 media dei primi 25 m
 _0_150 media dei primi 150 m
 ```{r signle year}
-trix_2017 <- nc_open("C:/Users/Acer/Google Drive/ASSEGNO DI RICERCA/SHAREMED_mio/TRIX/TRIX2017.nc")
+trix_2017 <- nc_open("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc")
 
 ```
 

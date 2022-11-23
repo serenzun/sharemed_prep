@@ -1,0 +1,169 @@
+---
+title: "mhw ankita"
+author: "SZ"
+date: '2022-07-20'
+output: html_document
+---
+
+```{r Ankita}
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
+source(here::here("R","setup.R"))
+
+MHW_8791_yearsum_check <-stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/lst/1987-1991/Data/yearsum_1987_1991.nc"))
+plot(MHW_8791_yearsum_check)
+
+MHW_8791_yearsum_sum <- calc(MHW_8791_yearsum_check , sum)
+rasterVis::levelplot(MHW_8791_yearsum_sum)
+writeRaster(MHW_8791_yearsum_sum,filename=file.path(dir_atlas,'marine heat waves/ankita_mhw/lst/MHW_8791_yearsum_sum.nc'),format='GTiff')
+```
+
+
+```{r Ankita}
+MHW_1519_yearsum_check <-stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/lst/2015-2019/Data/yearsum_2015_2019.nc"))
+
+plot(MHW_1519_yearsum_check)
+MHW_1519_yearsum_check <-brick(file.path(dir_atlas,"marine heat waves/ankita_mhw/lst/2015-2019/Data/yearsum_2015_2019.nc"))
+rasterVis::levelplot(MHW_1519_yearsum_check)
+
+
+
+MHW_1519_yearsum_sum <- calc(MHW_1519_yearsum_check , sum)
+rasterVis::levelplot(MHW_1519_yearsum_sum)
+writeRaster(MHW_1519_yearsum_sum,filename=file.path(dir_atlas,'marine heat waves/ankita_mhw/lst/MHW_1519_yearsum_sum.nc'),format='GTiff')
+```
+
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\marine heat waves\ankita_mhw\4-06-22_last\8791\yearsum_1987.nc"
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\marine heat waves\ankita_mhw\4-06-22_last\8791\yearsum_1988.nc"
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\marine heat waves\ankita_mhw\4-06-22_last\8791\yearsum_1989.nc"
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\marine heat waves\ankita_mhw\4-06-22_last\8791\yearsum_1990.nc"
+"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\marine heat waves\ankita_mhw\4-06-22_last\8791\yearsum_1991.nc"
+
+# read the new files
+```{r}
+
+mhw_ank<-file.path (dir_atlas,"marine heat waves/ankita_mhw/4-06-22_last/8791/")
+old_files_ank <- list.files(mhw_ank, full.names=TRUE)
+old_files_ank_stack <- stack(old_files_ank)
+plot(old_files_ank_stack)
+
+MHW_8791_yearsum_lastanalysum <- calc(old_files_ank_stack  , sum)
+rasterVis::levelplot(MHW_8791_yearsum_lastanalysum )
+
+
+```
+```{r}
+
+mhw_ank<-file.path (dir_atlas,"marine heat waves/ankita_mhw/4-06-22_last/")
+new_files_ank <- list.files(file.path(mhw_ank,"1519"), full.names=TRUE)
+new_files_ank_stack <- stack(new_files_ank)
+plot(new_files_ank_stack)
+
+MHW_1519_yearsum_lastanalysum <- calc(new_files_ank_stack  , sum)
+rasterVis::levelplot(MHW_1519_yearsum_lastanalysum )
+
+
+```
+
+```{r}
+diff_yearmean_last<-overlay(MHW_1519_yearsum_lastanalysum  ,MHW_8791_yearsum_lastanalysum   , fun=function(r1, r2){return(r1-r2)})
+rasterVis::levelplot(diff_yearmean_last, col.regions=colorRampPalette((brewer.pal(11, 'PuRd'))))
+```
+```{r}
+MHW_8791_yearsum_check <-stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/lst/1987-1991/Data/yearsum_1987_1991.nc"))
+MHW_8791_yearsum_sum <- calc(MHW_8791_yearsum_check , sum)
+MHW_1519_yearsum_check <-stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/lst/2015-2019/Data/yearsum_2015_2019.nc"))
+MHW_1519_yearsum_sum <- calc(MHW_1519_yearsum_check , sum)
+
+```
+
+
+
+##àold files
+
+
+```{r Ankita}
+diff_yearsum<-overlay(MHW_1519_yearsum_sum  ,MHW_8791_yearsum_sum  , fun=function(r1, r2){return(r1-r2)})
+rasterVis::levelplot(diff_yearsum , col.regions=colorRampPalette((brewer.pal(11, 'PuRd'))))
+
+MHW_8791_yearsum_mean <- calc(MHW_8791_yearsum_check , mean)
+rasterVis::levelplot(MHW_8791_yearsum_mean)
+
+diff_yearmean<-overlay(MHW_1519_yearsum_mean ,MHW_8791_yearsum_mean  , fun=function(r1, r2){return(r1-r2)})
+rasterVis::levelplot(diff_yearmean)
+```
+
+
+```{r Ankita}
+MHW_15_19_yearsum <-stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/finali/MHW_Newresults_med/2015-2019/Data/yearsum_2015_2019.nc"))
+rasterVis::levelplot(MHW_15_19_yearsum)
+
+MHW_15_19_yearsum_sum <- calc(MHW_15_19_yearsum , sum)
+MHW_15_19_yearsum_mean <- calc(MHW_15_19_yearsum , mean)
+rasterVis::levelplot(MHW_15_19_yearsum_sum)
+
+rasterVis::levelplot(MHW_15_19_yearsum_mean)
+writeRaster(MHW_15_19_yearsum_sum,filename=file.path(dir_atlas,'marine heat waves/ankita_mhw/finali/MHW_15_19_yearsum_sum2.nc'),format='GTiff')
+
+writeRaster(yr_18_npp_0.125 ,filename=file.path(dir_B,'prep/cw/cmems/tmp_npp/yr_18_npp_SUM_0.125.nc'),format='GTiff') #ma non cambia la risoluzione nel file!
+
+
+MHW__yearsum <-stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/finali/MHW_Newresults_med/2015-2019/Data/yearsum_2015_2019.nc"))
+
+```
+
+
+```{r}
+yearsum_15_19 <-raster(file.path(dir_atlas,"marine heat waves/ankita_mhw/22-03-22/yearsum_2015_2019.nc"))
+yearsum_15_19 <- stack(file.path(dir_atlas,"marine heat waves/ankita_mhw/22-03-22/yearsum_2015_2019.nc"))
+yearsum_15_19 
+rasterVis::levelplot(yearsum_15_19)
+plot(yearsum_15_19)
+```
+
+
+```{r}
+adr_mask <-st_read(file.path(dir_atlas,"marine heat waves/ADRIATIC_LAYER.shp"))
+med <- raster(file.path(dir_atlas, "/boundaries_domains/med2.tif"))
+rgn_med <-  st_read(file.path(dir_B,"prep/spatial/tmp/Regions_atl_FAO.shp")) %>% 
+  filter(F_CODE==37) %>% 
+  summarise(geometry = sf::st_union(geometry)) %>%
+  ungroup()
+projection(med ) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
+
+extent(rs_fis_dens) <- extent(med)
+yearsum_15_19  <-    crop(yearsum_15_19 ,rgn_med)
+plot(yearsum_15_19)
+yearsum_15_19  <-   mask(yearsum_15_19 ,rgn_med)
+plot(yearsum_15_19)
+
+yearsum_15_19[[1]]
+yearsum_15_19[[2]]
+yearsum_15_19[[3]]
+yearsum_15_19[[4]]
+yearsum_15_19[[5]]
+x <- format(as.Date(names(yearsum_15_19), format = "X%Y.%m.%d"), format = "X")
+x
+yr15_19 <- stackApply(yearsum_15_19, indices = x, fun=sum, na.rm=F)
+yr15_19
+
+
+yr15_19_positive <- calc(yearsum_15_19, indices = x, fun=function(x){sum(x[x>0], na.rm=F)
+})
+yr15_19_negative <- calc(yearsum_15_19, indices = x, fun=function(x){sum(x[x<0], na.rm=F)
+})
+
+rasterVis::levelplot(yearsum_15_19[[5]])
+
+
+```
+
+```{r}
+rasterVis::levelplot(yr15_19, main="Cumulative intensity over the period 2015-2019")
+rasterVis::levelplot(yr15_19_positive, main="Cumulative intensity over the period 2015-2019_positive")
+rasterVis::levelplot(yr15_19_negative, main="Cumulative intensity over the period 2015-2019_negative")
+```
+```{r}
+yearsum_87 <-raster(file.path(dir_atlas,"marine heat waves/ankita_mhw/22-03-22/sum_1987.nc"))
+rasterVis::levelplot(yearsum_87, main="Cumulative intensity 1987")
+```

@@ -1,0 +1,151 @@
+---
+title: "Untitled"
+author: "SZ"
+date: '2022-11-18'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(raster)       #Main raster library with nearly all functions used in this analysis
+library(rgdal)        #Spatial library - most functions used from rgdal are for vectors (shapefiles)
+library(dplyr)        #NOT spatial - this is a data wrangling library
+library(ggplot2)
+library(here)
+library(tidyverse)
+library(ncdf4)
+library(raster)
+library(RColorBrewer)
+library(sf)
+library(ncdf4)
+library("viridis") 
+library(cmocean)#color map from 
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+library(colorRamps)
+col <- colorRamps::matlab.like2
+trix_all<-file.path ("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/")
+list.files(trix_all)
+trix_all_files=list.files(trix_all,pattern="^TRIX.*nc", full.names=TRUE)
+
+year <- c(2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017)#Once you have a stack
+trix_2017 <- nc_open("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc")
+```
+
+
+```{r setup, include=FALSE}
+
+trix_0_0<-stack(trix_all_files, varname="TRIX_0_0")
+# add time dimension and names
+date <- seq(as.Date("2006-01-01"),as.Date("2017-12-01"), "months")
+
+names(trix_0_0) <- date
+
+#get the date from the names of the layers and extract the month
+indices <- format(as.Date(names(trix_0_0), format = "X%Y.%m.%d"), format = "%m")
+indices <- as.numeric(indices)
+trix_0_0
+```
+
+```{r monthly mean}
+MonthTRIX00<- stackApply(trix_0_0, indices, fun = mean)
+names(MonthTRIX00) <- month.abb
+#cols <- colorRampPalette(c("red", "yellow", "lightgreen"))(length(breaks)-1)
+rasterVis::levelplot(MonthTRIX00,col.regions=colorRampPalette(rev(brewer.pal(11, 'RdBu'))))
+col <- colorRamps::matlab.like2
+rasterVis::levelplot(MonthTRIX00,col.regions=col(20), main="monthly mean")
+
+```
+```{r YEARLY AVERAGE TRIX}
+year <- format(as.Date(names(trix_0_0), format = "X%Y"), format = "%Y")
+yr_trix_00 = stackApply(trix_0_0, indices=year, fun=mean)
+
+col <- colorRamps::matlab.like2
+plot(yr_trix_00, col=col(40),  zlim = c(2, 7))
+col <- colorRamps::matlab.like2
+#rasterVis::levelplot(yr_trix_00,col.regions=col(20), main="monthly mean")
+rasterVis::levelplot(yr_trix_00,col.regions=colorRampPalette((brewer.pal(9, 'YlOrBr'))), main="Annual mean")
+
+
+```
+
+#intanto faccio solo per 2017
+calcolo la media annuale epr ridurre numero di valori
+
+#Dissolved Oxygen (OXY_dev_da_sat_perc)
+```{r 02_00}
+#o2_00<-stack(trix_all_files, varname="M_DO_0_0")
+o2_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"))
+date <- seq(as.Date("2006-01-01"),as.Date("2017-12-01"), "months")
+names(o2_00) <- date
+
+#mean of all years
+o2_00_mean <- calc(o2_00, mean)
+plot(o2_00_mean)
+rasterVis::levelplot(o2_00_mean, main="O2 mean 2006-2017")
+
+#mean of the last5 years
+o2_00_13_17 <- subset(o2_00, )
+o2_00_mean_10_15 <- calc(o2_00, mean)
+plot(o2_00_mean)
+rasterVis::levelplot(o2_00_mean, main="O2 mean 2006-2017")
+
+#get the date from the names of the layers and extract the month
+indices <- format(as.Date(names(o2_00), format = "X%Y.%m.%d"), format = "%m")
+indices <- as.numeric(indices)
+
+#montlhy means
+MonthO2_00<- stackApply(o2_00, indices, fun = mean)
+names(MonthO2_00) <- month.abb
+rasterVis::levelplot(MonthO2_00, main="O2 monthly mean",col.regions=colorRampPalette(rev(brewer.pal(11, 'RdBu'))))
+col <- colorRamps::matlab.like2
+rasterVis::levelplot(MonthO2_00,col.regions=col(20), main="O2 monthly mean")
+
+#Annual mean
+year <- format(as.Date(names(o2_00), format = "X%Y"), format = "%Y")
+yr_o2_00= stackApply(o2_00, indices=year, fun=mean)
+plot(yr_o2_00, col=col(40),  zlim = c(2, 7))
+col <- colorRamps::matlab.like2
+plot(o2_00, col=col(40),  zlim = c(2, 7))
+col <- colorRamps::matlab.like2
+#rasterVis::levelplot(yr_trix_00,col.regions=col(20), main="monthly mean")
+rasterVis::levelplot(o2_00,col.regions=colorRampPalette((brewer.pal(9, 'YlOrBr'))), main="Annual mean")
+
+```
+
+```{r 02_00 2017} 
+ #M_DO_0_0, M_CHL_0_0, M_DIN_0_0, M_TP_0_0, TRIX_0_0, M_DO_0_25, M_CHL_0_25, M_DIN_0_25, M_TP_0_25, TRIX_0_25, M_DO_0_150, M_CHL_0_150, M_DIN_0_150, M_TP_0_150, TRIX_0_150
+
+o2_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_DO_0_0")
+chl_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_CHL_0_0")
+din_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_DIN_0_0")
+tp_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_TP_0_0")
+
+sal_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/.nc"), varname="xxx")
+temp_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atla/.nc"), varname="xxx")
+
+
+date <- seq(as.Date("2017-01-01"),as.Date("2017-12-01"), "months")
+names(o2_00_17) <- date
+
+pr <- extract(o2_00_17)
+#mean of all years
+o2_00_17_mean <- calc(o2_00_17, mean, na.rm=TRUE)
+chl_00_17_mean <- calc(chl_00_17, mean, na.rm=TRUE)
+din_00_17_mean <- calc(din_00_17, mean, na.rm=TRUE)
+tp_00_17_mean <- calc(tp_00_17, mean, na.rm=TRUE)
+plot(o2_00_17_mean)
+o2_00_17_mean_df <- rasterToPoints(o2_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(o2=layer)
+chl_00_17_mean_df <- rasterToPoints(chl_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(chl=layer)
+din_00_17_mean_df <- rasterToPoints(din_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(din=layer)
+tp_00_17_mean_df <- rasterToPoints(tp_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(tp=layer)
+#cad_17_00 <cbind(coordinates(o2_00_17_mean), v=values(o2_00_17_mean))
+##https://stackoverflow.com/questions/45064450/converting-a-raster-to-a-csv-in-r
+cadeau_00_17<- left_join(o2_00_17_mean_df,chl_00_17_mean_df,by=c("x","y")) %>% left_join(din_00_17_mean_df, by=c("x","y")) %>% left_join(tp_00_17_mean_df, by=c("x","y"))
+cadeau_00_17
+
+```
+
+
+
