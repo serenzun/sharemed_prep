@@ -429,6 +429,36 @@ dmat <-cadeau_00_st %>%select(4:9)
 library (spatialcluster)
 scl <- scl_full (xy, dmat, ncl = 2)
 plot (scl)
+
+
+#----------------------
+install.packages("rgeoda")
+library(rgeoda)
+library(sf)
+#https://geodacenter.github.io/rgeoda/articles/rgeoda_tutorial.html
+prj4string <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+my.projection <- st_crs(prj4string)
+
+cadeau_00_st_lat_long_sf <- st_as_sf(cadeau_00_st, coords = c("x", "y"), crs = my.projection)
+st_crs(cadeau_00_st_lat_long_sf)
+queen_weights(cadeau_00_st_lat_long_sf , order=1,  precision_threshold = 0)
+queen_w <- queen_weights(cadeau_00_st_lat_long_sf)
+summary(queen_w)
+nbrs <- get_neighbors(queen_w, idx = 3)
+nbrs
+
+clusters <- skater(4, queen_w, cadeau_00_st_lat_long_sf[c('o2','chl','din','tp','ss','sst')])
+
+#To compute the spatial lag of a specified observation by passing the values of the selected variable:
+lag_o2 <- spatial_lag(queen_w, cadeau_00_st_lat_long_sf ['o2'])
+lag_o2
+
+lag_din <- spatial_lag(queen_w, cadeau_00_st_lat_long_sf ['din'])
+lag_din
+```
+
+
+```{r use spatial constraint}
 # Define coordinate reference system
 prj4string <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 my.projection <- st_crs(prj4string)
@@ -441,7 +471,7 @@ st_crs(cadeau_00_st_lat_long_sf)
 st_write(cadeau_00_st_lat_long_sf,
          "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp", driver = "ESRI Shapefile")
 
-cadeau_00_st_lat_long_sf <- readOGR(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp"))
+cadeau_00_st_lat_long_shp <- readOGR(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp"))
 cadeau_00_st_utm <- spTransform(cadeau_00_st_lat_long_sf , CRS("+proj=utm +zone=33
 +ellps=WGS84 +datum=WGS84 +units=m +no_defs +towgs84=0,0,0"))
 
