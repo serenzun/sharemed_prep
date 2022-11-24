@@ -423,12 +423,16 @@ cadeau_00_st_var <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHARE
 cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv")) 
 
 cadeau_00_st_var <- read.csv(file.path("~/github/sharemed_prep/trix_cadeau/cadeau_00_st_var.csv"))
-xy <- cadeau_00_st %>% select(x,y)
-dmat <-cadeau_00_st %>%select(4:9)
 
-library (spatialcluster)
-scl <- scl_full (xy, dmat, ncl = 2)
-plot (scl)
+
+
+library(caret)
+library(dplyr)
+library(lime)
+library(doParallel)
+library(arules)
+cluster <- makeCluster(detectCores()-1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
 
 
 #----------------------
@@ -448,7 +452,8 @@ nbrs <- get_neighbors(queen_w, idx = 3)
 nbrs
 
 clusters <- skater(4, queen_w, cadeau_00_st_lat_long_sf[c('o2','chl','din','tp','ss','sst')])
-
+cluster <- redcap(4, queen_w,cadeau_00_st, "fullorder-completelinkage")
+??redcap
 #To compute the spatial lag of a specified observation by passing the values of the selected variable:
 lag_o2 <- spatial_lag(queen_w, cadeau_00_st_lat_long_sf ['o2'])
 lag_o2
