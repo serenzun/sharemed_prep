@@ -19,7 +19,7 @@ library(RColorBrewer)
 library(sf)
 library(ncdf4)
 library("viridis") 
-library(cmocean)#color map from 
+#library(cmocean)#color map from 
 
 library(dplyr)
 library(ggplot2)
@@ -30,7 +30,7 @@ library(clusterSim)
 library(GGally)
 library(psych)
 library(DataExplorer)
-library(clValid)
+#library(clValid)
 library(sf)
 library(mapview)
 source(here::here("R","setup.R"))
@@ -373,47 +373,23 @@ mapview(result_16b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALS
 
 ```
 
-```{r tpr_lat_long_sf}
-
-pr <- result_4b %>% select(c(group,x,y))
-# Define coordinate reference system
-
-# Create sf object
-pr_lat_long_sf <- st_as_sf(pr, coords = c("x", "y"), crs = 4326)
-st_crs(pr_lat_long_sf)
-
-remotes::install_github("spatialanalysis/sfExtras")
-library(sfExtras)
-library(spdep)
-library(geodaData)
-library(sf)
-
-ncovr_queen <- st_rook(pr_lat_long_sf)
-
-#pr_lat_long_sf_4326 <- st_transform(pr_lat_long_sf,4326)
-#str_c(pr_lat_long_sf_4326)
-# Export shapefile
-st_write(pr_lat_long_sf, "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/pr_lat_long_sf", driver="ESRI Shapefile")
-
-"G:\Il mio Drive\ASSEGNO DI RICERCA\SHAREMED_mio\wp4_atlas\TRIX\pr_lat_long_sf\pr_lat_long_sf_q.shp"
-
-pr <- st_read("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/pr_lat_long_sf/pr_lat_long_sf.shp")
-
-pr_lat_long_sppnt <- SpatialPointsDataFrame(pr_lat_long_sf)
-
-library(tidyverse)
-library(sf)
-library(stars)
-pr_torast<-st_rasterize(pr_lat_long_sf %>% dplyr::select(group, geometry))
-write_stars(pr_torast, "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/pr_torast.tif")
-here()
-```
-
 
 An R package for spatially-constrained clustering using either distance or covariance matrices. “Spatially-constrained” means that the data from which clusters are to be formed also map on to spatial reference points, and the constraint is that clusters must be spatially contiguous.
 https://mpadge.github.io/spatialcluster/
 ```{r use spatial constraint}
 #https://spatialanalysis.github.io/workshop-notes/spatial-autocorrelation.html
+#----------------------
+install.packages("rgeoda")
+library(rgeoda)
+library(sf)
+
+
+library(caret)
+library(doParallel)
+library(arules)
+cluster <- makeCluster(detectCores()-1)
+registerDoParallel(cluster)
+
 library(spdep)
 library (spatialcluster)
 library(sfExtras)
@@ -423,22 +399,14 @@ cadeau_00_st_var <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHARE
 cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv")) 
 
 cadeau_00_st_var <- read.csv(file.path("~/github/sharemed_prep/trix_cadeau/cadeau_00_st_var.csv"))
-xy <- cadeau_00_st %>% select(x,y)
-dmat <-cadeau_00_st %>%select(4:9)
 
-library (spatialcluster)
-scl <- scl_full (xy, dmat, ncl = 2)
-plot (scl)
-
-clusters <- redcap(4, queen_w, cadeau_00_st, "fullorder-completelinkage")
-
-#----------------------
-install.packages("rgeoda")
-library(rgeoda)
-library(sf)
 #https://geodacenter.github.io/rgeoda/articles/rgeoda_tutorial.html
 prj4string <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 my.projection <- st_crs(prj4string)
+
+
+
+
 
 cadeau_00_st_lat_long_sf <- st_as_sf(cadeau_00_st, coords = c("x", "y"), crs = my.projection)
 st_crs(cadeau_00_st_lat_long_sf)
@@ -448,37 +416,52 @@ summary(queen_w)
 nbrs <- get_neighbors(queen_w, idx = 3)
 nbrs
 
-clusters <- skater(4, queen_w, cadeau_00_st_lat_long_sf[c('o2','chl','din','tp','ss','sst')])
-
-library(caret)
-library(doParallel)
-library(arules)
-cluster <- makeCluster(detectCores()-1)
-registerDoParallel(cluster)
 clusters_cadeau <- redcap(4, queen_w,cadeau_00_st, "fullorder-completelinkage")
 clusters_cadeau
-saveRDS(clusters_cadeau, file="clusters_cadeau.RData")
+#saveRDS(clusters_cadeau, file="clusters_cadeau.RData")
 
-clusters_cadeau_save<- readRDS("clusters_cadeau.RData")
-#To compute the spatial lag of a specified observation by passing the values of the selected variable:
-lag_o2 <- spatial_lag(queen_w, cadeau_00_st_lat_long_sf ['o2'])
-lag_o2
+clusters_cadeau<- readRDS("clusters_cadeau.RData")
 
-lag_din <- spatial_lag(queen_w, cadeau_00_st_lat_long_sf ['din'])
-lag_din
+### try to do like with the others
+result_cadeau_spat <- cbind(clusters_cadeau$Cluster,cadeau_00_st_var)
+# Interpreting result
+result_cadeau_spat$group <- as.factor(clusters_cadeau$Cluster) 
+result_cadeau_spat$'cluster_cadeau$Cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+
+#install.packages("DataExplorer")
+library(DataExplorer)
+plot_boxplot(result_cadeau_spat , by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_cadeau_spat, cluster_cadeau$Cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_cadeau_spatb <- cbind(clusters_cadeau$Cluster,cadeau_00_st)
+result_cadeau_spatb$group <- as.factor(clusters_cadeau$Cluster) 
+write.csv(result_cadeau_spatb,"result_cadeau_spatb.csv")
+
+# open libraries
+library(tidyverse)
+library(sf)
+library(stars)
+
+# rasterize based on geometry and a column named "value". Change the name of this column if necessary
+
+
+      result_cadeau_4trial_spatb_sf <- st_as_sf(result_cadeau_spatb, coords = c("x", "y"), crs = my.projection)
+st_crs(result_cadeau_4trial_spatb_sf)
+result_cadeau_4trial_spatb_sf <-st_rasterize(result_cadeau_4trial_spatb_sf  %>% dplyr::select(group, geometry))
+ write_stars(result_cadeau_4trial_spatb_sf, "result_cadeau_4trial_spatb_sf.tif")
+mapview(result_cadeau_spatb, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
 ```
 
 
-```{r use spatial constraint}
-# Define coordinate reference system
-prj4string <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
-my.projection <- st_crs(prj4string)
+```{r some try with other packages.not working}
 
 
-
-# Create sf object
-cadeau_00_st_lat_long_sf <- st_as_sf(cadeau_00_st, coords = c("x", "y"), crs = my.projection)
-st_crs(cadeau_00_st_lat_long_sf)
 st_write(cadeau_00_st_lat_long_sf,
          "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp", driver = "ESRI Shapefile")
 
@@ -490,7 +473,7 @@ plot(cadeau_00_st_utm )
 cadeau_00_st_utm_sf <- sf::st_as_sf(cadeau_00_st_utm)
 cadeau_00_st_queen <- st_queen(cadeau_00_st_utm_sf )
 
-scl_redcap() 
+
 
 options(repos = c(
                   mpadge = 'https://mpadge.r-universe.dev',
