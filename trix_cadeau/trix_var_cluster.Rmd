@@ -430,6 +430,7 @@ library (spatialcluster)
 scl <- scl_full (xy, dmat, ncl = 2)
 plot (scl)
 
+clusters <- redcap(4, queen_w, cadeau_00_st, "fullorder-completelinkage")
 
 #----------------------
 install.packages("rgeoda")
@@ -449,6 +450,16 @@ nbrs
 
 clusters <- skater(4, queen_w, cadeau_00_st_lat_long_sf[c('o2','chl','din','tp','ss','sst')])
 
+library(caret)
+library(doParallel)
+library(arules)
+cluster <- makeCluster(detectCores()-1)
+registerDoParallel(cluster)
+clusters_cadeau <- redcap(4, queen_w,cadeau_00_st, "fullorder-completelinkage")
+clusters_cadeau
+saveRDS(clusters_cadeau, file="clusters_cadeau.RData")
+
+clusters_cadeau_save<- readRDS("clusters_cadeau.RData")
 #To compute the spatial lag of a specified observation by passing the values of the selected variable:
 lag_o2 <- spatial_lag(queen_w, cadeau_00_st_lat_long_sf ['o2'])
 lag_o2
