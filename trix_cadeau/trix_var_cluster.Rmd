@@ -1,0 +1,501 @@
+---
+title: "Untitled"
+author: "SZ"
+date: '2022-11-18'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+library(raster)       #Main raster library with nearly all functions used in this analysis
+library(rgdal)        #Spatial library - most functions used from rgdal are for vectors (shapefiles)
+library(dplyr)        #NOT spatial - this is a data wrangling library
+library(ggplot2)
+library(here)
+library(tidyverse)
+library(ncdf4)
+library(raster)
+library(RColorBrewer)
+library(sf)
+library(ncdf4)
+library("viridis") 
+#library(cmocean)#color map from 
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(mlr)
+library(clue)
+library(clusterSim)
+library(GGally)
+library(psych)
+library(DataExplorer)
+#library(clValid)
+library(sf)
+library(mapview)
+#source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+library(colorRamps)
+col <- colorRamps::matlab.like2
+trix_all<-file.path ("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/")
+list.files(trix_all)
+trix_all_files=list.files(trix_all,pattern="^TRIX.*nc", full.names=TRUE)
+
+year <- c(2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017)#Once you have a stack
+trix_2017 <- nc_open("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc")
+```
+
+
+
+```{r 02_00 2017} 
+#M_DO_0_0, M_CHL_0_0, M_DIN_0_0, M_TP_0_0, TRIX_0_0, M_DO_0_25, M_CHL_0_25, M_DIN_0_25, M_TP_0_25, TRIX_0_25, M_DO_0_150, M_CHL_0_150, M_DIN_0_150, M_TP_0_150, TRIX_0_150
+
+o2_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_DO_0_0")
+chl_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_CHL_0_0")
+din_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_DIN_0_0")
+tp_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/TRIX2017.nc"), varname="M_TP_0_0")
+```
+
+
+```{r 02_00 2017} 
+#sal_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/.nc"), varname="xxx")
+#temp_00_17<-stack(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atla/.nc"), varname="xxx")
+
+
+date <- seq(as.Date("2017-01-01"),as.Date("2017-12-01"), "months")
+#names(o2_00_17) <- date
+
+#pr <- extract(o2_00_17)
+#mean of all years
+o2_00_17_mean <- calc(o2_00_17, mean, na.rm=TRUE)
+chl_00_17_mean <- calc(chl_00_17, mean, na.rm=TRUE)
+din_00_17_mean <- calc(din_00_17, mean, na.rm=TRUE)
+tp_00_17_mean <- calc(tp_00_17, mean, na.rm=TRUE)
+plot(o2_00_17_mean)
+o2_00_17_mean_df <- rasterToPoints(o2_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(o2=layer)
+chl_00_17_mean_df <- rasterToPoints(chl_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(chl=layer)
+din_00_17_mean_df <- rasterToPoints(din_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(din=layer)
+tp_00_17_mean_df <- rasterToPoints(tp_00_17_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(tp=layer)
+#cad_17_00 <cbind(coordinates(o2_00_17_mean), v=values(o2_00_17_mean))
+##https://stackoverflow.com/questions/45064450/converting-a-raster-to-a-csv-in-r
+cadeau_00_17<- left_join(o2_00_17_mean_df,chl_00_17_mean_df,by=c("x","y")) %>% left_join(din_00_17_mean_df, by=c("x","y")) %>% left_join(tp_00_17_mean_df, by=c("x","y"))
+cadeau_00_17
+
+myvars <- c("o2","chl", "din", "tp")
+cadeau_00_17_var <-cadeau_00_17[myvars]
+cadeau_00_17_var<-as.data.frame(scale(cadeau_00_17_var))#TO CREATE STANDARDISED DATA
+
+```
+
+```{r cluster analysis}
+#run simple cluster analysis
+result1 <- kmeans(cadeau_00_17_var, centers=3, nstart=100)
+
+size <- as.data.frame(result1$size)
+```
+
+
+##Elbow method
+Recall that, the basic idea behind partitioning methods, such as k-means clustering, is to define clusters such that the total intra-cluster variation [or total within-cluster sum of square (WSS)] is minimized. The total WSS measures the compactness of the clustering and we want it to be as small as possible.
+
+The Elbow method looks at the total WSS as a function of the number of clusters: One should choose a number of clusters so that adding another cluster doesn’t improve much better the total WSS.
+
+The optimal number of clusters can be defined as follow:
+
+Compute clustering algorithm (e.g., k-means clustering) for different values of k. For instance, by varying k from 1 to 10 clusters.
+For each k, calculate the total within-cluster sum of square (wss).
+Plot the curve of wss according to the number of clusters k.
+The location of a bend (knee) in the plot is generally considered as an indicator of the appropriate number of clusters.
+```{r cluster analysis}
+# Find the optimal number of clusters with the elbow rule
+K <- 16
+dev_entro <- c()#empty vectors to keep the results
+for(i in 2:K)
+{
+  k_means <- kmeans(cadeau_00_17_var, centers=i, nstart=100)
+  dev_entro <- c(dev_entro, k_means$tot.withinss)
+}
+
+
+plot(2:K, dev_entro,
+     type="b", pch = 21, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares",
+     main="Elbow rule")
+axis(side=1, at=1:10)
+```
+
+```{r}
+# Collect results for plotting
+group_5 <- kmeans(cadeau_00_17_var, centers=5, nstart=100)
+result_5 <- cbind(group_5$cluster,cadeau_00_17_var)
+# Interpreting result
+result_5$group <- as.factor(group_5$cluster) 
+result_5$'group_5$cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+library(DataExplorer)
+plot_boxplot(result_5, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_5, group_5$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_5b <- cbind(group_5$cluster,cadeau_00_17)
+result_5b$group <- as.factor(group_5$cluster) 
+mapview(result_5b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=10)
+
+```
+
+```{r}
+# Collect results for plotting
+group_8 <- kmeans(cadeau_00_17_var, centers=8, nstart=100)
+result_8 <- cbind(group_8$cluster,cadeau_00_17_var)
+# Interpreting result
+result_8$group <- as.factor(group_8$cluster) 
+result_8$'group_5$cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+library(DataExplorer)
+plot_boxplot(result_8, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_8, group_8$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_8b <- cbind(group_8$cluster,cadeau_00_17)
+result_8b$group <- as.factor(group_8$cluster) 
+mapview(result_8b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=10)
+
+```
+
+
+```{r all year}
+
+trix_all<-file.path ("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/")
+list.files(trix_all)
+trix_all_files=list.files(trix_all,pattern="^TRIX.*nc", full.names=TRUE)
+
+
+na_shp <- readOGR("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/boundaries_domains/griglia+maschera_adriatico/adriatic_sea_msfd_4326.shp")
+
+
+
+o2_0_0<-stack(trix_all_files, varname="M_DO_0_0")
+CRS4326 <-CRS("+init=epsg:4326")
+o2_0_0rpj <- projectRaster(o2_0_0, crs = CRS4326,over=T,progress='text')
+   #o2_0_0mask<- mask(o2_0_0,na_shp, progress='text')
+   #o2_0_0crop<- crop(o2_0_0mask,na_shp, progress='text')
+            o2_0_0mask<- mask(o2_0_0rpj,na_shp, progress='text')
+            o2_0_0crop<- crop(o2_0_0mask,na_shp, progress='text')
+
+chl_0_0<-stack(trix_all_files, varname="M_CHL_0_0")
+projection(chl_0_0) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"  
+chl_0_0 <- projectRaster(chl_0_0, crs = CRS4326,over=T,progress='text')
+  chl_0_0mask<- mask(chl_0_0,na_shp, progress='text')
+  chl_0_0crop<- crop(chl_0_0mask,na_shp, progress='text')
+ 
+din_0_0<-stack(trix_all_files, varname="M_DIN_0_0")
+din_0_0 <- projectRaster(din_0_0, crs = CRS4326,over=T,progress='text')
+   din_0_0mask<- mask(din_0_0,na_shp, progress='text')
+   din_0_0crop<- crop(din_0_0mask,na_shp, progress='text')
+
+tp_0_0<-stack(trix_all_files, varname="M_TP_0_0")
+tp_0_0 <- projectRaster(tp_0_0, crs = CRS4326,over=T,progress='text')
+ tp_0_0mask<- mask(tp_0_0,na_shp, progress='text')
+ tp_0_0crop<- crop(tp_0_0mask,na_shp, progress='text')
+#mean of all years
+o2_00_mean <- calc(o2_0_0crop, mean, na.rm=TRUE)
+chl_00_mean <- calc(chl_0_0crop, mean, na.rm=TRUE)
+din_00_mean <- calc(din_0_0crop, mean, na.rm=TRUE)
+tp_00_mean <- calc(tp_0_0crop, mean, na.rm=TRUE)
+
+
+o2_00_mean_df <- rasterToPoints(o2_00_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(o2=layer) %>% mutate_at(1:2, round, 4)
+chl_00_mean_df <- rasterToPoints(chl_00_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(chl=layer) %>% mutate_at(1:2, round, 4)
+din_00_mean_df <- rasterToPoints(din_00_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(din=layer) %>% mutate_at(1:2, round, 4)
+tp_00_mean_df <- rasterToPoints(tp_00_mean, na.rm=TRUE) %>% as.data.frame() %>% rename(tp=layer) %>% mutate_at(1:2, round, 4)
+#write.csv(tp_00_mean_df, file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/tp_00_mean_df.csv"))
+
+
+cadeau_00<- left_join(o2_00_mean_df,chl_00_mean_df,by=c("x","y")) %>% left_join(din_00_mean_df, by=c("x","y")) %>% left_join(tp_00_mean_df, by=c("x","y"))
+cadeau_00
+
+myvars <- c("o2","chl", "din", "tp")
+cadeau_00_var <-cadeau_00[myvars]
+cadeau_00_var<-as.data.frame(scale(cadeau_00_var))#TO CREATE STANDARDISED DATA
+
+```
+
+```{r dataset with t and s}
+# estraiamo S e T superficiali da file che ho scaricato da flusxus. la struttura di questi file è differente da quelli denominati TRIX poichè lo script è di Maroc. Serve fare un check per verificare che vadano bene. 
+#SOno comunque medie mensili dal 2006 al 2017.
+
+#nei file sss sst c'è solo il layer superficiale che è quello che andrò ad esaminare ora
+CRS4326 <-CRS("+init=epsg:4326")
+
+trix_all<-file.path ("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/")
+#per farlo funzionare fai prima correre l'altro codice
+sss_all_files=list.files(trix_all,pattern="^SSS.*nc", full.names=TRUE)
+
+sss_0_0<-stack(sss_all_files, varname="S")
+
+extent(sss_0_0)=extent(o2_0_0)
+res(sss_0_0)=res(o2_0_0)
+projection(sss_0_0) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"  
+
+sss_0_0_rpj <- projectRaster(sss_0_0, crs = CRS4326,over=T,progress='text')
+
+ss_0_0mask<- mask(sss_0_0_rpj,na_shp, progress='text')
+ss_0_0crop<- crop(ss_0_0mask,na_shp, progress='text')
+ss_00_mean <- calc(ss_0_0crop, mean)
+#writeRaster(ss_00_mean ,filename = file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/ss_00_mean.tif"), format="GTiff", overwrite=TRUE)
+
+ss_00_mean_df <- rasterToPoints(ss_00_mean) %>% as.data.frame() %>% rename(ss=layer)%>% mutate_at(1:2, round, 4)
+write.csv(ss_00_mean_df, file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/ss_00_mean_df_base.csv"))
+
+
+cadeau_00_st<- left_join(cadeau_00,ss_00_mean_df,by=c("x","y")) 
+cadeau_00_st
+
+
+sst_all_files=list.files(trix_all,pattern="^SST.*nc", full.names=TRUE)
+sst_0_0<-stack(sst_all_files, varname="T")
+
+extent(sst_0_0)=extent(o2_0_0)
+res(sst_0_0)=res(o2_0_0)
+projection(sst_0_0) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"  
+sst_0_0_rpj <- projectRaster(sst_0_0, crs = CRS4326,over=T,progress='text')
+
+st_0_0mask<- mask(sst_0_0_rpj,na_shp, progress='text')
+st_0_0crop<- crop(st_0_0mask,na_shp, progress='text')
+st_00_mean <- calc(st_0_0crop, mean)
+#writeRaster(ss_00_mean ,filename = file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/ss_00_mean.tif"), format="GTiff", overwrite=TRUE)
+
+st_00_mean_df <- rasterToPoints(st_00_mean) %>% as.data.frame() %>% rename(sst=layer)%>% mutate_at(1:2, round, 4)
+cadeau_00_st<- left_join(cadeau_00_st,st_00_mean_df,by=c("x","y"))
+
+
+myvars <- c("o2","chl", "din", "tp","ss","sst")
+cadeau_00_st_var <-cadeau_00_st[myvars]
+cadeau_00_st_var<-as.data.frame(scale(cadeau_00_st_var))
+
+write.csv(cadeau_00_st_var,file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st_var.csv"))
+write.csv(cadeau_00_st,file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv"))
+
+cadeau_00_st_var <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st_var.csv")) 
+cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv")) 
+```
+
+```{r cluster analysis}
+# Find the optimal number of clusters with the elbow rule
+K <- 9
+dev_entro <- c()#empty vectors to keep the results
+for(i in 2:K)
+{
+  k_means <- kmeans(cadeau_00_st_var, centers=i, nstart=100)
+  dev_entro <- c(dev_entro, k_means$tot.withinss)
+}
+
+
+plot(2:K, dev_entro,
+     type="b", pch = 21, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares",
+     main="Elbow rule")
+axis(side=1, at=1:10)
+```
+
+```{r 5}
+# Collect results for plotting
+group_5 <- kmeans(cadeau_00_st_var, centers=5, nstart=100)
+result_5 <- cbind(group_5$cluster,cadeau_00_st_var)
+# Interpreting result
+result_5$group <- as.factor(group_5$cluster) 
+result_5$'group_5$cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+library(DataExplorer)
+plot_boxplot(result_5, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_5, group_5$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_5b <- cbind(group_5$cluster,cadeau_00_st)
+result_5b$group <- as.factor(group_5$cluster) 
+mapview(result_5b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+
+result_cadeau_5trial_sf <- st_as_sf(result_5b, coords = c("x", "y"), crs = my.projection)
+st_crs(result_cadeau_5trial_sf)
+result_cadeau_5trial_sf<-st_rasterize(result_cadeau_5trial_sf  %>% dplyr::select(group, geometry))
+stars::write_stars(result_cadeau_5trial_sf, file.path(dir_cluster, "result_cadeau_5trial_sf.tif"))
+
+
+```
+
+```{r 4}
+# Collect results for plotting
+group_4 <- kmeans(cadeau_00_st_var, centers=4, nstart=100)
+result_4 <- cbind(group_4$cluster,cadeau_00_st_var)
+# Interpreting result
+result_4$group <- as.factor(group_4$cluster) 
+result_4$'group_4$cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+library(DataExplorer)
+plot_boxplot(result_4, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_4, group_4$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_4b <- cbind(group_4$cluster,cadeau_00_st)
+result_4b$group <- as.factor(group_4$cluster) 
+mapview(result_4b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+```
+
+```{r 16}
+# Collect results for plotting
+group_16 <- kmeans(cadeau_00_st_var, centers=16, nstart=100)
+result_16 <- cbind(group_16$cluster,cadeau_00_st_var)
+# Interpreting result
+result_16$group <- as.factor(group_16$cluster) 
+result_16$'group_16$cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+library(DataExplorer)
+plot_boxplot(result_16, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_16, group_16$cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_16b <- cbind(group_16$cluster,cadeau_00_st)
+result_16b$group <- as.factor(group_16$cluster) 
+mapview(result_16b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+```
+
+
+An R package for spatially-constrained clustering using either distance or covariance matrices. “Spatially-constrained” means that the data from which clusters are to be formed also map on to spatial reference points, and the constraint is that clusters must be spatially contiguous.
+https://mpadge.github.io/spatialcluster/
+```{r use spatial constraint}
+#https://spatialanalysis.github.io/workshop-notes/spatial-autocorrelation.html
+#----------------------
+install.packages("rgeoda")
+library(rgeoda)
+library(sf)
+
+
+library(caret)
+library(doParallel)
+library(arules)
+cluster <- makeCluster(detectCores()-1)
+registerDoParallel(cluster)
+
+library(spdep)
+library (spatialcluster)
+library(sfExtras)
+#remotes::install_github("spatialanalysis/sfExtras")
+
+cadeau_00_st_var <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st_var.csv")) 
+cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv")) 
+
+cadeau_00_st_var <- read.csv(file.path("~/github/sharemed_prep/trix_cadeau/cadeau_00_st_var.csv"))
+
+#https://geodacenter.github.io/rgeoda/articles/rgeoda_tutorial.html
+prj4string <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+my.projection <- st_crs(prj4string)
+
+
+
+
+
+cadeau_00_st_lat_long_sf <- st_as_sf(cadeau_00_st, coords = c("x", "y"), crs = my.projection)
+st_crs(cadeau_00_st_lat_long_sf)
+queen_weights(cadeau_00_st_lat_long_sf , order=1,  precision_threshold = 0)
+queen_w <- queen_weights(cadeau_00_st_lat_long_sf)
+summary(queen_w)
+nbrs <- get_neighbors(queen_w, idx = 3)
+nbrs
+
+clusters_cadeau <- redcap(4, queen_w,cadeau_00_st, "fullorder-completelinkage")
+clusters_cadeau
+#saveRDS(clusters_cadeau, file="clusters_cadeau.RData")
+
+clusters_cadeau<- readRDS("clusters_cadeau.RData")
+
+### try to do like with the others
+result_cadeau_spat <- cbind(clusters_cadeau$Cluster,cadeau_00_st_var)
+# Interpreting result
+result_cadeau_spat$group <- as.factor(clusters_cadeau$Cluster) 
+result_cadeau_spat$'cluster_cadeau$Cluster'<-NULL
+# https://ggplot2.tidyverse.org/reference/geom_boxplot.html
+# https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
+
+
+#install.packages("DataExplorer")
+library(DataExplorer)
+plot_boxplot(result_cadeau_spat , by="group", geom_boxplot_args=list("outlier.color"="blue"))
+clusplot(result_cadeau_spat, cluster_cadeau$Cluster, main='2D representation of the Cluster solution',
+         color=TRUE, shade=TRUE,
+         labels=4, lines=0)
+# Plot the lon-lat dist of our clustering
+result_cadeau_spatb <- cbind(clusters_cadeau$Cluster,cadeau_00_st)
+result_cadeau_spatb$group <- as.factor(clusters_cadeau$Cluster) 
+write.csv(result_cadeau_spatb,"result_cadeau_spatb.csv")
+
+# open libraries
+library(tidyverse)
+library(sf)
+library(stars)
+
+# rasterize based on geometry and a column named "value". Change the name of this column if necessary
+
+
+      result_cadeau_4trial_spatb_sf <- st_as_sf(result_cadeau_spatb, coords = c("x", "y"), crs = my.projection)
+st_crs(result_cadeau_4trial_spatb_sf)
+result_cadeau_4trial_spatb_sf <-st_rasterize(result_cadeau_4trial_spatb_sf  %>% dplyr::select(group, geometry))
+ write_stars(result_cadeau_4trial_spatb_sf, "result_cadeau_4trial_spatb_sf.tif")
+mapview(result_cadeau_spatb, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+```
+
+
+```{r some try with other packages.not working}
+
+
+st_write(cadeau_00_st_lat_long_sf,
+         "G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp", driver = "ESRI Shapefile")
+
+cadeau_00_st_lat_long_shp <- readOGR(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.shp"))
+cadeau_00_st_utm <- spTransform(cadeau_00_st_lat_long_sf , CRS("+proj=utm +zone=33
++ellps=WGS84 +datum=WGS84 +units=m +no_defs +towgs84=0,0,0"))
+
+plot(cadeau_00_st_utm )
+cadeau_00_st_utm_sf <- sf::st_as_sf(cadeau_00_st_utm)
+cadeau_00_st_queen <- st_queen(cadeau_00_st_utm_sf )
+
+
+
+options(repos = c(
+                  mpadge = 'https://mpadge.r-universe.dev',
+                  CRAN = 'https://cloud.r-project.org'))
+install.packges ("spatialcluster")
+remotes::install_git("https://codeberg.org/mpadge/spatialcluster")
+
+library (spatialcluster)
+scl <- scl_full (xy, dmat, ncl = 8)
+plot (scl)
+library(spdep)
+install.packages('spDataLarge', repos='https://nowosad.github.io/drat/',
+type='source')
+
+library(geosphere)
+mdist <- distm(pr_lat_long_sf )
+```
+
