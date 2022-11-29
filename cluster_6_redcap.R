@@ -84,7 +84,7 @@ dunndin<- kwAllPairsDunnTest(x$din,g,p.adjust.method = "bonferroni")
 
 
 kruskal_lapply <- lapply(x, kruskal.test, g, p.adjust.methods="bonferroni")
-
+ 
 dunn_lapply <- lapply(x,kwAllPairsDunnTest, g,p.adjust.method = "bonferroni") 
 
 
