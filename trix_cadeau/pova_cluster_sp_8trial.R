@@ -24,6 +24,11 @@ proj4string(cadeau_00_st)<- CRS("+proj=longlat +datum=WGS84")
 prova<-spTransform(cadeau_00_st,CRS("+proj=longlat"))
 
 
+##
+cadeau_00_st_utm <- spTransform(cadeau_00_st, CRS("+proj=utm +zone=33 +elleps=WGS84 +datum=WGS84 +units=m +no_defs +towg=0,0,0"))
+cadeau_00_st_utm_sf <- sf::st_as_sf(cadeau_00_st_utm)
+##
+
 queen_w <- queen_weights(prova)
 
 cadeau_00_st_lat_long_sf <- st_as_sf(cadeau_00_st, coords = c("x", "y"), crs = my.projection)
@@ -34,6 +39,8 @@ summary(queen_w)
 nbrs <- get_neighbors(queen_w, idx = 3)
 nbrs
 clusters_cadeau <- redcap(8, queen_w,cadeau_00_st, "fullorder-completelinkage")
+
+clusters_cadeau_ward <- redcap(8, queen_w,cadeau_00_st, "fullorder-wardlinkage")
 
 #clusters_cadeau <- redcap(8, queen_w,cadeau_00_st, "fullorder-completelinkage")
 clusters_cadeau

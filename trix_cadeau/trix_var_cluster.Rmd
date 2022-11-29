@@ -33,7 +33,7 @@ library(DataExplorer)
 #library(clValid)
 library(sf)
 library(mapview)
-source(here::here("R","setup.R"))
+#source(here::here("R","setup.R"))
 #source(here::here("R","directories_dell.R"))
 source(here::here("R","directories_pcOffice_TAMARA.R"))
 library(colorRamps)
@@ -290,7 +290,7 @@ cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_
 
 ```{r cluster analysis}
 # Find the optimal number of clusters with the elbow rule
-K <- 16
+K <- 9
 dev_entro <- c()#empty vectors to keep the results
 for(i in 2:K)
 {
@@ -326,6 +326,13 @@ clusplot(result_5, group_5$cluster, main='2D representation of the Cluster solut
 result_5b <- cbind(group_5$cluster,cadeau_00_st)
 result_5b$group <- as.factor(group_5$cluster) 
 mapview(result_5b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+
+result_cadeau_5trial_sf <- st_as_sf(result_5b, coords = c("x", "y"), crs = my.projection)
+st_crs(result_cadeau_5trial_sf)
+result_cadeau_5trial_sf<-st_rasterize(result_cadeau_5trial_sf  %>% dplyr::select(group, geometry))
+stars::write_stars(result_cadeau_5trial_sf, file.path(dir_cluster, "result_cadeau_5trial_sf.tif"))
+
 
 ```
 
