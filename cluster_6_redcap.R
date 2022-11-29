@@ -29,13 +29,13 @@ summary(queen_w)
 nbrs <- get_neighbors(queen_w, idx = 3)
 nbrs
 clusters_cadeau_6 <- redcap(6, queen_w,cadeau_00_st, "fullorder-completelinkage")
-clusters_cadeau<-clusters_cadeau_6
+
 #clusters_cadeau <- redcap(8, queen_w,cadeau_00_st, "fullorder-completelinkage")
 
 saveRDS(clusters_cadeau_6, file=file.path(dir_cluster,"clusters_cadeau_6.RData"))
 #saveRDS(clusters_cadeau, file="clusters_cadeau_8_full-compl.RData")
 
-clusters_cadeau_6<- readRDS(file.path(dir_cluster,"clusters_cadeau_6.RData"))
+#clusters_cadeau<- readRDS("clusters_cadeau_8_full-compl.RData")
 
 ### try to do like with the others
 result_cadeau_spat <- cbind(clusters_cadeau_6$Cluster,cadeau_00_st_var)
@@ -52,16 +52,16 @@ plot_boxplot(result_cadeau_spat , by="group", geom_boxplot_args=list("outlier.co
 #         color=TRUE, shade=TRUE,
 #         labels=4, lines=0)
 ## Plot the lon-lat dist of our clustering
-
-result_cadeau_spatb <- cbind(clusters_cadeau_6$Cluster,cadeau_00_st)
-result_cadeau_spatb$group <- as.factor(clusters_cadeau_6$Cluster) 
-#write.csv(result_cadeau_spatb,"result_cadeau_spatb_6trial.csv")
+result_cadeau_spatb <- cbind(clusters_cadeau$Cluster,cadeau_00_st)
+result_cadeau_spatb$group <- as.factor(clusters_cadeau$Cluster) 
+write.csv(result_cadeau_spatb,"result_cadeau_spatb_6trial.csv")
 
 result_cadeau_6trial_spatb_sf <- st_as_sf(result_cadeau_spatb, coords = c("x", "y"), crs = my.projection)
 st_crs(result_cadeau_6trial_spatb_sf)
 result_cadeau_6trial_spatb_sf <-st_rasterize(result_cadeau_6trial_spatb_sf  %>% dplyr::select(group, geometry))
 stars::write_stars(result_cadeau_6trial_spatb_sf, file.path(dir_cluster, "result_cadeau_6trial_full-comp_spatb_sf.tif"))
 #mapview(result_cadeau_spatb, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE)
+
 
 
 
@@ -119,3 +119,4 @@ ggboxplot(result_cadeau_spatb_spread, x = "Variable", y = "measurment",fill="gro
 mix_all<-ggplot(data=df)+ geom_boxplot(aes(x=Ecosim.biomass, y=ratio,fill=id)) +
   facet_wrap(group, scales="free_x",nrow = 2)
 mix_all
+
