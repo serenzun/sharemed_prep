@@ -83,7 +83,7 @@ kruskal.test(x ~ g, dat)
 
 g <- result_cadeau_spatb$group
 x <- result_cadeau_spatb[5:10]
-library(PMCMRplus)
+library(PMCMRplus) 
 kruskalTest(x, g, dist = "Chisquare") 
 kwAllPairsDunnTest(x,g,p.adjust.method = "bonferroni")
 
