@@ -1,0 +1,189 @@
+---
+title: "sst"
+author: "sz"
+date: "2024-02-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+```
+prep_med
+
+https://data.marine.copernicus.eu/product/SST_MED_SST_L4_REP_OBSERVATIONS_010_021/download?dataset=cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021_202007
+
+Overview
+The Reprocessed (REP) Mediterranean (MED) dataset provides a stable and consistent long-term Sea Surface Temperature (SST) time series over the Mediterranean Sea (and the adjacent North Atlantic box) developed for climate applications. This product consists of daily (nighttime), optimally interpolated (L4), satellite-based estimates of the foundation SST (namely, the temperature free, or nearly-free, of any diurnal cycle) at 0.05° resolution grid covering the period from January 1st 1982 to present (currently, up to one month before real time). The MED-REP-L4 product is built from a consistent reprocessing of the collated level-3 (merged single-sensor, L3C) climate data record provided by the ESA Climate Change Initiative (CCI) and the Copernicus Climate Change Service (C3S) initiatives, but also includes in input an adjusted version of the AVHRR Pathfinder dataset version 5.3 to increase the input observation coverage. Due to Brexit, an interim production guarantees the temporal extension of the MED-REP-L4 product since 1st January 2023 to present.
+
+DOI (product):
+https://doi.org/10.48670/moi-00173
+
+to finde number of days with temperature SSt above 30°C
+need to download daily data
+
+
+
+ 
+Sono in scratch 
+copernicusmarine subset -i cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021 -v analysed_sst -x -6 -X 36.5 -y 30 -Y 46 -t 1984-01-07 -T 2024-01-07  -o ./CMEMS -f dataset_subset04_24.nc
+
+copernicusmarine subset -i cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021 -v analysed_sst -x -6 -X 36.5 -y 30 -Y 46 -t 1984-01-07 -T 2004-01-07  -o ./CMEMS -f dataset_subset84_04.nc
+
+copernicusmarine subset -i cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021 -v analysed_sst -x -6 -X 36.5 -y 30 -Y 46 -t 2004-01-07 -T 2024-01-07  -o ./CMEMS -f dataset_subset04_24.nc
+
+(dovrebbe funzionare anche:)
+copernicusmarine subset -i cmems_SST_MED_SST_L4_REP_OBSERVATIONS_010_021 --force-dataset-version 202007 --variable analysed_sst --start-datetime 1984-01-07T00:00:00 --end-datetime 2024-01-07T00:00:00 --minimum-longitude -6 --maximum-longitude 36.5 --minimum-latitude 30 --maximum-latitude 46
+
+Devo individuare il numero dei giorni per anno in cui la temperatura è andata sopra i 30°C  (nord adriatico ma va bene anche med per NBFC)
+sono dati giornalieri
+
+
+```{r}
+
+sst_folder<-file.path (dir_B,"prep_med/cmems/sst/raw")#da modificare
+sst=list.files(sst_folder,pattern=".nc$", full.names=TRUE)
+
+
+sst04_24_d<-  stack(file.path(sst_folder, 'dataset_subset04_24.nc'))
+plot(sst04_24_d)
+```
+
+```{r}
+# Function to convert Kelvin to Celsius
+kelvin_to_celsius <- function(x) {
+  return(x - 273.15)
+}
+
+# Apply the conversion function to each layer in the raster stack
+sst04_24_d_C <- calc(sst04_24_d, kelvin_to_celsius)
+sst04_24_d_C <- raster_stack_celsius
+plot(raster_stack_celsius)
+names(sst04_24_d_C) <- names(sst04_24_d)
+max(sst04_24_d_C)
+writeRaster(sst04_24_d_C,file.path(dir_B,"prep_med/cmems/sst/int_sst/sst04_24_d_C.tif"))
+writeRaster(sst04_24_d_C,file.path(dir_B,"prep_med/cmems/sst/int_sst/sst04_24_d_C.nc", format = "CDF"))
+sst04_24_d_C<-  terra::rast(file.path(dir_B,"prep_med/cmems/sst/int_sst/sst04_24_d_C.tif"))
+
+```
+
+```{r}
+names_int <- seq(as.Date("2004/1/7"), by = "month", length.out = 240)
+names(sst04_24_d_C)=names_int 
+years <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"), format = "%Y")
+years <- as.numeric(years)#these are the months
+#months <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"), format = "%m")
+#months<- as.numeric(months)#these are the months
+
+x <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"))
+names(sst04_24_d_C) <- years
+Annual_mean_SST <- stackApply(sst04_24_d_C, indices=years, fun=max, na.rm=T,progress='text')
+
+
+
+fun <- function(x, na.rm) {
+   sum(x > 29, na.rm)
+}
+# Calculate the number of days above threshold for each year
+annual_days_above_threshold <- stackApply(sst04_24_d_C, indices = years, 
+                                          fun = fun, 
+                                         progress = 'text')
+plot(annual_days_above_threshold)
+
+writeRaster(annual_days_above_threshold,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold.tif"))
+
+writeRaster(annual_days_above_threshold,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_04_24.nc", format = "CDF"))
+```
+
+
+```{r}
+sst84_04_d<-  stack(file.path(sst_folder, 'dataset_subset84_04.nc'))
+plot(sst84_04_d)
+
+#25°C 298.15 Kelvin
+# 29 302,15
+# Function to convert Kelvin to Celsius
+##troppo lunho, lavoro con kelvin
+kelvin_to_celsius <- function(x) {
+  return(x - 273.15)
+}
+
+# Apply the conversion function to each layer in the raster stack
+sst84_04_d_C <- calc(sst84_04_d, kelvin_to_celsius)
+
+plot(raster_stack_celsius)
+names(sst84_04_d_C) <- names(sst04_24_d)
+
+#writeRaster(sst04_24_d_C,file.path(dir_B,"prep_med/cmems/sst/int_sst/sst04_24_d_C.tif"))
+#writeRaster(sst04_24_d_C,file.path(dir_B,"prep_med/cmems/sst/int_sst/sst04_24_d_C.nc", format = "CDF"))
+
+names_int <- seq(as.Date("1984/1/7"), by = "month", length.out = 240)
+names(sst84_04_d)=names_int 
+years <- format(as.Date(names(sst84_04_d), format = "X%Y.%m.%d"), format = "%Y")
+years <- as.numeric(years)#these are the months
+a <- unique(years)
+months <- format(as.Date(names(sst84_04_d), format = "X%Y.%m.%d"), format = "%m")
+months<- as.numeric(months)#these are the months
+
+x <- format(as.Date(names(sst84_04_d), format = "X%Y.%m.%d"))
+names(sst84_04_d) <- years
+Annual_mean_SST_8404 <- stackApply(sst84_04_d_C, indices=years, fun=max, na.rm=T,progress='text')
+
+
+
+fun <- function(x, na.rm) {
+   sum(x > 302.15, na.rm)
+}
+# Calculate the number of days above threshold for each year
+annual_days_above_threshold_29C_84_04 <- stackApply(sst84_04_d, indices = years, 
+                                          fun = fun, 
+                                         progress = 'text')
+#need to change the name of the years. don't know which problem occurs
+names(annual_days_above_threshold_29C_84_04) <- c("index_1984","index_1985","index_1986","index_1987","index_1988","index_1989","index_1990","index_1991","index_1992","index_1993","index_1994","index_1995","index_1996","index_1997","index_1998","index_1999","index_2000","index_2001","index_2002","index_2003","index_2004")
+plot(annual_days_above_threshold_29C_84_04)
+
+writeRaster(annual_days_above_threshold_29C_84_04,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_84_04.tif"),overwrite=TRUE)
+
+writeRaster(annual_days_above_threshold_29C_84_04,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_84_04.nc", format = "CDF"),overwrite=TRUE)
+```
+
+```{r}
+tot <- stack(annual_days_above_threshold_29C_84_04,annual_days_above_threshold)
+tot$index_2024
+plot(tot$index_2022)
+```
+```{r}
+dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
+na_bound <- terra::vect(file.path(dir_B,"prep_med/spatial/NA boundaries/NA_boundaries corrected.shp"))
+na_bound <- terra::project(na_bound , "EPSG:4326") 
+tot <- terra::rast(tot ,  crs="+proj=longlat +datum=WGS84")
+crop <- crop(tot, na_bound)
+crop <- mask(crop, na_bound)
+plot(crop)
+extr <- terra::extract(crop, na_bound,fun=sum,na.rm=TRUE)
+
+```
+
+```{r}
+a <- terra::rast(file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_04_24.tif"))
+
+c <- crop(a, na_bound)
+plot(c)
+fun <- function(x, na.rm = TRUE) {
+  return(sum(x >1, na.rm = na.rm))
+}
+
+
+fun <- function(x, na.rm) {
+   sum(x > 1, na.rm=na.rm)
+}
+c <- stack(c)
+ind <- names(c)
+prova <- stackApply(c, indices = ind,
+                    fun = fun, 
+                    progress = 'text')
+prova
+```
+
