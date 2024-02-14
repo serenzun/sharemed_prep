@@ -1,0 +1,31 @@
+---
+title: "maree grado"
+author: "sz"
+date: "2024-02-13"
+output: html_document
+---
+File scaricati da qui: https://www.venezia.isprambiente.it/rete-meteo-mareografica
+per grado. riscaricati da zero perchè le modifiche di Isabella mi complicavano l'analisi
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+source(here::here("R","setup.R"))
+#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_pcOffice_TAMARA.R"))
+maree_grado <- file.path (dir_B,"prep_med/maree_grado/raw")
+tide_91_22 <- list.files(path=file.path(maree_grado),pattern='.txt',full.names=T)
+tide_91_22_df <- lapply(tide_91_22, function(x) {read.table(file = x, header = F, sep =";")})
+# Combine them
+tide_91_22_df_all <- do.call("rbind", lapply(tide_91_22_df, as.data.frame)) 
+t <- tide_91_22_df_all %>% separate(V1, c('Year', 'Month','Day'))
+```
+
+```{r}
+tide_120 <- tide_91_22_df_all %>% 
+              group_by(YMD) %>% 
+              summarise(sum120=sum(V3))
+        
+```
+
