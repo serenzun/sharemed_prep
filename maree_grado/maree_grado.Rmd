@@ -10,9 +10,8 @@ per grado. riscaricati da zero perchè le modifiche di Isabella mi complicavano 
 
 ```{r setup, include=FALSE}
 
-knitr::opts_chunk$set(echo = TRUE)
 source(here::here("R","setup.R"))
-#source(here::here("R","directories_dell.R"))
+source(here::here("R","directories_dell.R"))
 source(here::here("R","directories_pcOffice_TAMARA.R"))
 maree_grado <- file.path (dir_B,"prep_med/maree_grado/raw")
 tide_91_22 <- list.files(path=file.path(maree_grado),pattern='.txt',full.names=T)
@@ -26,6 +25,115 @@ t <- tide_91_22_df_all %>% separate(V1, c('Year', 'Month','Day'))
 tide_120 <- tide_91_22_df_all %>% 
               group_by(YMD) %>% 
               summarise(sum120=sum(V3))
-        
+  
+threshold <- 120
+
+count_above_threshold <- function(file_name, threshold) {
+  # Read the file
+  data <- read.table(file_name, header = F, sep =";")
+  
+  # Extract numeric values (assuming they are in the second column)
+  values <- data[[3]]
+  
+  # Count occurrences above threshold
+  count <- sum(values > threshold)
+  
+  return(count)
+}  
+
+counts <- sapply(tide_91_22, count_above_threshold, threshold = threshold)
+
+# Print the counts
+print(counts)
+c <- as.data.frame(counts)
+```
+
+
+```{r}
+# List of file names
+
+# Function to count occurrences above thresholds
+count_above_thresholds <- function(file_name, thresholds) {
+  # Read the file
+  data <- read.table(file_name, header = F, sep =";")
+
+  # Extract numeric values (assuming they are in the second column)
+  values <- data[[3]]
+  
+  # Initialize empty dataframe with zeros
+  result_df <- data.frame(matrix(0, nrow = 1, ncol = length(thresholds)))
+
+  # Loop through thresholds
+  for (i in seq_along(thresholds)) {
+    # Count occurrences above threshold
+    count <- sum(values > thresholds[i])
+    
+    # Assign result to dataframe
+    result_df[1, i] <- count
+  }
+  
+  # Set column names
+  colnames(result_df) <- paste0("Threshold_", thresholds)
+  
+  return(result_df)
+}
+
+# Define thresholds
+thresholds <- c(140, 160, 180)
+
+# Apply function to each file in the list
+results <- lapply(tide_91_22, count_above_thresholds, thresholds = thresholds)
+
+# Merge the list of dataframes into one dataframe
+merged_df <- dplyr::bind_rows(results, .id = "FileName")
+
+# Print the merged dataframe
+print(merged_df)
+
+
+# Set row names from 1991 to 2022
+merged_df$FileName<- 1991:2022
+
+
+```
+
+```{r sottraggo quelle dopo per normalizzare i dati}
+library(dplyr)
+maree_abs<- merged_df %>% 
+            mutate(Thr_160 = Threshold_160 - Threshold_180) %>% 
+            mutate(Thr_140=Threshold_140-(Threshold_180+Threshold_160)) %>% 
+  select(c(1,4:6)) %>% rename(Year=FileName)
+  
+plot(maree_abs$Year,maree_abs$Thr_140)
+
+melted_df <- maree_abs %>%
+  tidyr::pivot_longer(cols = c(2:4), names_to = "Variable", values_to = "Height")
+
+library(ggplot2)
+
+ggplot(melted_df, aes(x = Year, y = Height, fill = Variable)) +
+  geom_bar(stat = "identity", position = "dodge")+
+  labs(title = "Bar Plot of Values by Year", x = "Year", y = "Value") +
+ scale_x_continuous(breaks = unique(melted_df$Year)) +
+# scale_x_continuous (breaks = seq(min(melted_df$Year), max(melted_df$Year), by = 3), 
+#                     labels = seq(min(melted_df$Year), max(melted_df$Year), by = 3)) +
+  
+scale_fill_brewer(palette="Set2")+
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_smooth(aes(fill=NULL),  method=lm, se=FALSE, col="black")
+
+
+# Aggregate the data to calculate the sum for each year
+sum_df <- melted_df %>%
+  group_by(Year) %>%
+  summarise(Total_Value = sum(Height))
+# Fit a linear regression model
+lm_model <- lm(Total_Value ~ Year, data = sum_df)
+summary(lm_model)
+# Predict values using the linear model
+sum_df <- sum_df %>%
+  mutate(Predicted_Value = predict(lm_model))
+
 ```
 
