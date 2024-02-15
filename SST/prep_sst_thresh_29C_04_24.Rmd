@@ -48,6 +48,8 @@ sst=list.files(sst_folder,pattern=".nc$", full.names=TRUE)
 
 
 sst04_24_d<-  stack(file.path(sst_folder, 'dataset_subset04_24.nc'))
+sst84_04_d<-  stack(file.path(sst_folder, 'dataset_subset84_04.nc'))
+
 plot(sst04_24_d)
 ```
 
@@ -70,21 +72,99 @@ sst04_24_d_C<-  terra::rast(file.path(dir_B,"prep_med/cmems/sst/int_sst/sst04_24
 ```
 
 ```{r}
-names_int <- seq(as.Date("2004/1/7"), by = "month", length.out = 240)
+names_int <- seq(as.Date("2004/1/1"), by = "day", length.out = 7306)
 names(sst04_24_d_C)=names_int 
 years <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"), format = "%Y")
 years <- as.numeric(years)#these are the months
+
 #months <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"), format = "%m")
 #months<- as.numeric(months)#these are the months
 
-x <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"))
-names(sst04_24_d_C) <- years
+x <- format(as.Date(names(sst04_24_d), format = "X%Y.%m.%d"))
+names(sst04_24_d) <- years
 Annual_mean_SST <- stackApply(sst04_24_d_C, indices=years, fun=max, na.rm=T,progress='text')
+```
+output:
+annual_days_above_threshold_29C_04_24_NA
+annual_days_above_threshold_29C_84_04_NA
+```{r solo na con estrazione a 0}
+#27°C
+
+
+fun <- function(x, na.rm=TRUE) {
+   return(sum(x > 300.15,na.rm=na.rm))
+}
 
 
 
-fun <- function(x, na.rm) {
-   sum(x > 29, na.rm)
+na_bound <- terra::vect(file.path(dir_B,"prep_med/spatial/NA boundaries/NA_boundaries corrected.shp"))
+na_bound <- terra::project(na_bound , "EPSG:4326") 
+tot <- terra::rast(sst04_24_d ,  crs="+proj=longlat +datum=WGS84")
+
+sst04_24_d_NA <- mask(tot, na_bound)
+sst04_24_d_NA <- crop(sst04_24_d_NA, na_bound)
+plot(sst04_24_d_NA)
+sst04_24_d_NA_sr <- stack(sst04_24_d_NA)
+plot(sst04_24_d_NA_sr)
+
+annual_days_above_threshold_29C_04_24_NA <- stackApply(sst04_24_d_NA_sr, indices = years, 
+                                          fun = fun, 
+                                          progress = 'text')
+
+df <- as.data.frame(annual_days_above_threshold_29C_04_24_NA)
+```
+
+```{r}
+tot_84 <- terra::rast(sst84_04_d ,  crs="+proj=longlat +datum=WGS84")
+
+tot_84_NA <- mask(tot_84, na_bound)
+sst84_04_d_NA <- crop(tot_84_NA, na_bound)
+plot(sst84_04_d_NA)
+sst84_04_d_NA_sr <- stack(sst84_04_d_NA)
+plot(sst84_04_d_NA_sr)
+
+names_int84 <- seq(as.Date("1984/1/7"), by = "month", length.out = 240)
+names(sst84_04_d_NA_sr)=names_int84 
+years <- format(as.Date(names(sst84_04_d_NA_sr), format = "X%Y.%m.%d"), format = "%Y")
+years <- as.numeric(years)#these are the months
+
+#months <- format(as.Date(names(sst04_24_d_C), format = "X%Y.%m.%d"), format = "%m")
+#months<- as.numeric(months)#these are the months
+
+x <- format(as.Date(names(sst84_04_d_NA_sr), format = "X%Y.%m.%d"))
+names(sst84_04_d_NA_sr) <- years
+
+
+annual_days_above_threshold_29C_84_04_NA <- stackApply(sst84_04_d_NA_sr, indices = years, 
+                                          fun = fun, 
+                                          progress = 'text')
+
+plot(annual_days_above_threshold_29C_84_04_NA)
+a <- as.data.frame(annual_days_above_threshold_29C_84_04_NA)
+```
+semplice conta dei giorni dall'84 al 2024,eliminando forse 2023 che era nan?
+```{r}
+annual_days_above_threshold_29C_04_24_NA
+annual_days_above_threshold_29C_84_04_NA
+na_sum <- stack(annual_days_above_threshold_29C_84_04_NA,annual_days_above_threshold_29C_04_24_NA)
+head(na_sum)
+na_sum2 <- calc(na_sum,sum)
+plot(na_sum2)
+```
+```{r calcolo anomalia}
+na_clima <- calc(na_sum, mean)
+na_last5ys <- na_sum[[c(36:40)]]
+na_last5ys <- calc(na_last5ys, mean)
+anomalies_sst5ys_30dg<- raster::overlay(na_last5ys,na_clima , fun=function(r1, r2){return(r1-r2)})
+rasterVis::levelplot(anomalies_sst5ys_30dg,margin=F,main="anomalies_sst5ys_30dg", col.regions=colorRampPalette(rev(brewer.pal(11, 'RdBu'))))
+
+```
+
+
+
+```{r}
+fun <- function(x, na.rm=TRUE) {
+   sum(x > 300,15,na.rm=na.rm)
 }
 # Calculate the number of days above threshold for each year
 annual_days_above_threshold <- stackApply(sst04_24_d_C, indices = years, 
@@ -95,7 +175,37 @@ plot(annual_days_above_threshold)
 writeRaster(annual_days_above_threshold,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold.tif"))
 
 writeRaster(annual_days_above_threshold,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_04_24.nc", format = "CDF"))
+annual_days_above_threshold_29C_04_24 <- terra::rast(file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_04_24.tif"))
+plot(annual_days_above_threshold_29C_04_24$annual_days_above_threshold_29C_04_24_21)
+annual_days_above_threshold_29C_04_22 <- annual_days_above_threshold_29C_04_24[[c(1:19)]]
+df24 <- as.data.frame(annual_days_above_threshold_29C_04_22)
 ```
+
+```{r}
+sst84_04_d<-  stack(file.path(sst_folder, 'dataset_subset84_04.nc'))
+sst04_24_d<-  stack(file.path(sst_folder, 'dataset_subset04_24.nc'))
+sst84_24_d <- stack(sst84_04_d,sst04_24_d)
+
+years <- format(as.Date(names(sst84_24_d), format = "X%Y.%m.%d"), format = "%Y")
+years <- as.numeric(years)#these are the months
+months <- format(as.Date(names(sst84_24_d), format = "X%Y.%m.%d"), format = "%m")
+months<- as.numeric(months)#these are the months
+#names_int <- seq(as.Date("1984/1/1"), by = "month", length.out = 480)
+#names(sst04_24_d_C)=names_int 
+
+x <- format(as.Date(names(sst84_24_d), format = "X%Y.%m.%d"))
+names(sst84_24_d) <- years
+
+fun <- function(x, na.rm=TRUE) {
+   sum(x > 302.15, na.rm=na.rm)
+}
+
+annual_days_above_threshold_29C_84_24 <- stackApply(sst84_24_d, indices = years, 
+                                          fun = fun, 
+                                         progress = 'text')
+```
+
+
 
 
 ```{r}
@@ -147,13 +257,43 @@ plot(annual_days_above_threshold_29C_84_04)
 writeRaster(annual_days_above_threshold_29C_84_04,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_84_04.tif"),overwrite=TRUE)
 
 writeRaster(annual_days_above_threshold_29C_84_04,file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_84_04.nc", format = "CDF"),overwrite=TRUE)
+
+annual_days_above_threshold_29C_84_04 <- terra::rast(file.path(dir_B,"prep_med/cmems/sst/int_sst/annual_days_above_threshold_29C_84_04.tif"))
+plot(annual_days_above_threshold_29C_84_04)
+df84 <- as.data.frame(annual_days_above_threshold_29C_84_04)
+df84$sum <- rowSums(df84)
+annual_days_above_threshold_29C_84_03 <- annual_days_above_threshold_29C_84_04[[c(1:20)]]
 ```
+qui devo mantenere il numero minimo di 1, quindi la prima estrazione andava bene,
+
+```{r sum the 2 period}
+annual_days_above_threshold_29C_84_03_sum <- terra::app(annual_days_above_threshold_29C_84_03,sum)
+annual_days_above_threshold_29C_04_22_sum <- terra::app(annual_days_above_threshold_29C_04_22,sum)
+plot(annual_days_above_threshold_29C_04_22_sum)
+plot(annual_days_above_threshold_29C_84_03_sum)
+trend_8403_vs_0422 <- ((annual_days_above_threshold_29C_04_22_sum-annual_days_above_threshold_29C_84_03_sum)/annual_days_above_threshold_29C_84_03_sum)*100
+
+# Define a color palette ranging from white to red
+palette <- colorRampPalette(c("white", "red"))
+   yb<-colorRampPalette(c("yellow2","goldenrod","darkred"),bias=0.5)
+  YlOrRd <-  colorRampPalette(brewer.pal(11, "YlOrRd"))
+plot(trend_8403_vs_0422,col=YlOrRd(100))
+
+trend_8403_vs_0422_NA <- crop(trend_8403_vs_0422,na_bound)
+dev.new()
+plot(trend_8403_vs_0422_NA,col=YlOrRd(100), main="SST N.days>=30°C % 8403_vs_0422")
+# Add a legend with units
+
+
+```
+
 
 ```{r}
 tot <- stack(annual_days_above_threshold_29C_84_04,annual_days_above_threshold)
 tot$index_2024
 plot(tot$index_2022)
 ```
+
 ```{r}
 dir_atlas <- file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas")
 na_bound <- terra::vect(file.path(dir_B,"prep_med/spatial/NA boundaries/NA_boundaries corrected.shp"))
@@ -162,7 +302,9 @@ tot <- terra::rast(tot ,  crs="+proj=longlat +datum=WGS84")
 crop <- crop(tot, na_bound)
 crop <- mask(crop, na_bound)
 plot(crop)
-extr <- terra::extract(crop, na_bound,fun=sum,na.rm=TRUE)
+fun <- function(x, na.rm = TRUE) {
+  return(sum(x >1, na.rm = na.rm))
+}
 
 ```
 
