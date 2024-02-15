@@ -102,26 +102,26 @@ library(dplyr)
 maree_abs<- merged_df %>% 
             mutate(Thr_160 = Threshold_160 - Threshold_180) %>% 
             mutate(Thr_140=Threshold_140-(Threshold_180+Threshold_160)) %>% 
-  select(c(1,4:6)) %>% rename(Year=FileName)
+  select(c(1,4:6)) %>% rename(Year=FileName, Thr_180=Threshold_180)
   
 plot(maree_abs$Year,maree_abs$Thr_140)
 
 melted_df <- maree_abs %>%
-  tidyr::pivot_longer(cols = c(2:4), names_to = "Variable", values_to = "Height")
+  tidyr::pivot_longer(cols = c(2:4), names_to = "Threshold", values_to = "Height")
 
 library(ggplot2)
 
-ggplot(melted_df, aes(x = Year, y = Height, fill = Variable)) +
+ggplot(melted_df, aes(x = Year, y = Height, fill = Threshold)) +
   geom_bar(stat = "identity", position = "dodge")+
-  labs(title = "Bar Plot of Values by Year", x = "Year", y = "Value") +
+  labs(title = "High Tides: Days by Year above thresholds", x = "Year", y = "N. of days") +
  scale_x_continuous(breaks = unique(melted_df$Year)) +
 # scale_x_continuous (breaks = seq(min(melted_df$Year), max(melted_df$Year), by = 3), 
 #                     labels = seq(min(melted_df$Year), max(melted_df$Year), by = 3)) +
   
 scale_fill_brewer(palette="Set2")+
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  geom_smooth(aes(fill=NULL),  method=lm, se=FALSE, col="black")
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))# +
+ # geom_smooth(aes(fill=NULL),  method=lm, se=FALSE, col="black")
 
 
 # Aggregate the data to calculate the sum for each year
@@ -130,6 +130,12 @@ sum_df <- melted_df %>%
   summarise(Total_Value = sum(Height))
 # Fit a linear regression model
 lm_model <- lm(Total_Value ~ Year, data = sum_df)
+```
+
+
+```{r echo=FALSE}
+plot(sum_df$Total_Value ~ sum_df$Year)+
+  abline(0,1)
 summary(lm_model)
 # Predict values using the linear model
 sum_df <- sum_df %>%
