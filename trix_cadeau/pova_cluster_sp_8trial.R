@@ -38,8 +38,8 @@ clusters_cadeau <- redcap(8, queen_w,cadeau_00_st, "fullorder-completelinkage")
 #clusters_cadeau <- redcap(8, queen_w,cadeau_00_st, "fullorder-completelinkage")
 clusters_cadeau
 #saveRDS(clusters_cadeau, file="clusters_cadeau.RData")
-saveRDS(clusters_cadeau, file="clusters_cadeau_8_full-compl.RData")
-
+#saveRDS(clusters_cadeau, file="clusters_cadeau_8_full-compl.RData")
+saveRDS(clusters_cadeau_8, file=file.path(dir_cluster,"clusters_cadeau_8.RData"))
 clusters_cadeau<- readRDS("clusters_cadeau_8_full-compl.RData")
 
 ### try to do like with the others
@@ -60,13 +60,13 @@ plot_boxplot(result_cadeau_spat , by="group", geom_boxplot_args=list("outlier.co
 ## Plot the lon-lat dist of our clustering
 result_cadeau_spatb <- cbind(clusters_cadeau$Cluster,cadeau_00_st)
 result_cadeau_spatb$group <- as.factor(clusters_cadeau$Cluster) 
-write.csv(result_cadeau_spatb,"result_cadeau_spatb_8trial.csv")
+write.csv(result_cadeau_spatb,file.path(dir_cluster,"result_cadeau_spatb_8trial.csv"))
 mapview(result_cadeau_spatb, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
 
 result_cadeau_8trial_spatb_sf <- st_as_sf(result_cadeau_spatb, coords = c("x", "y"), crs = my.projection)
 st_crs(result_cadeau_8trial_spatb_sf)
 result_cadeau_8trial_spatb_sf <-st_rasterize(result_cadeau_8trial_spatb_sf  %>% dplyr::select(group, geometry))
-stars::write_stars(result_cadeau_8trial_spatb_sf, file.path(dir_cluster, "result_cadeau_8trial_full-comp_spatb_sf.tif"))
+stars::write_stars(result_cadeau_8trial_spatb_sf, file.path(dir_cluster, "result_cadeau_8trial_full-comp_spatb_sf_AAAA.tif"))
 #mapview(result_cadeau_spatb, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE)
 ??kruskalTest
 

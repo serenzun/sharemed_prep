@@ -13,9 +13,9 @@ library(devtools)
 library(tibble)
 library(rgeos)
 ##install.packages('DBI')
-library(colorRamps)
+
 #install.packages("gdalUtils")
-library(gdalUtils)
+
 ##Libraries:
 library(tidyverse)
 library(purrr)

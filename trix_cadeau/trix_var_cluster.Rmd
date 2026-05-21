@@ -192,7 +192,7 @@ o2_0_0rpj <- projectRaster(o2_0_0, crs = CRS4326,over=T,progress='text')
 
 chl_0_0<-stack(trix_all_files, varname="M_CHL_0_0")
 projection(chl_0_0) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"  
-chl_0_0 <- projectRaster(chl_0_0, crs = CRS4326,over=T,progress='text')
+chl_0_0 <- raster::projectRaster(chl_0_0, crs = CRS4326,over=T,progress='text')
   chl_0_0mask<- mask(chl_0_0,na_shp, progress='text')
   chl_0_0crop<- crop(chl_0_0mask,na_shp, progress='text')
  
@@ -224,7 +224,7 @@ cadeau_00
 
 myvars <- c("o2","chl", "din", "tp")
 cadeau_00_var <-cadeau_00[myvars]
-cadeau_00_var<-as.data.frame(scale(cadeau_00_var))#TO CREATE STANDARDISED DATA
+#cadeau_00_var<-as.data.frame(scale(cadeau_00_var))#TO CREATE STANDARDISED DATA
 
 ```
 
@@ -286,6 +286,7 @@ write.csv(cadeau_00_st,file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mi
 
 cadeau_00_st_var <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st_var.csv")) 
 cadeau_00_st <- read.csv(file.path("G:/Il mio Drive/ASSEGNO DI RICERCA/SHAREMED_mio/wp4_atlas/TRIX/cadeau_00_st.csv")) 
+
 ```
 
 ```{r cluster analysis}
@@ -358,25 +359,34 @@ mapview(result_4b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE
 
 ```
 
-```{r 16}
+```{r 8}
 # Collect results for plotting
-group_16 <- kmeans(cadeau_00_st_var, centers=16, nstart=100)
-result_16 <- cbind(group_16$cluster,cadeau_00_st_var)
+#cadeau_00_st_var <- cadeau_00_st_var %>% dplyr::select((2:7))
+group_8 <- kmeans(cadeau_00_st_var, centers=8, nstart=100)
+result_8 <- cbind(group_8$cluster,cadeau_00_st_var)
 # Interpreting result
-result_16$group <- as.factor(group_16$cluster) 
-result_16$'group_16$cluster'<-NULL
+result_8$group <- as.factor(group_8$cluster) 
+result_8$'group_8$cluster'<-NULL
 # https://ggplot2.tidyverse.org/reference/geom_boxplot.html
 # https://towardsdatascience.com/understanding-boxplots-5e2df7bcbd51
 
 library(DataExplorer)
-plot_boxplot(result_16, by="group", geom_boxplot_args=list("outlier.color"="blue"))
-clusplot(result_16, group_16$cluster, main='2D representation of the Cluster solution',
-         color=TRUE, shade=TRUE,
-         labels=4, lines=0)
+#plot_boxplot(result_8, by="group", geom_boxplot_args=list("outlier.color"="blue"))
+#clusplot(result_8, group_8$cluster, main='2D representation of the Cluster solution',
+#         color=TRUE, shade=TRUE,
+#         labels=4, lines=0)
 # Plot the lon-lat dist of our clustering
-result_16b <- cbind(group_16$cluster,cadeau_00_st)
-result_16b$group <- as.factor(group_16$cluster) 
-mapview(result_16b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+result_8b <- cbind(group_8$cluster,cadeau_00_st)
+result_8b$group <- as.factor(group_8$cluster) 
+#mapview(result_8b, xcol = "x", ycol = "y", zcol="group",crs = 4269, grid = FALSE, cex=0.5)
+
+
+
+result_cadeau_8trial_sf <- st_as_sf(result_8b, coords = c("x", "y"), crs = my.projection)
+st_crs(result_cadeau_8trial_sf)
+library(stars)
+result_cadeau_8trial_sf<-st_rasterize(result_cadeau_8trial_sf  %>% dplyr::select(group, geometry))
+stars::write_stars(result_cadeau_8trial_sf, file.path(dir_cluster, "result_cadeau_8trial_sf_2.tif"))
 
 ```
 
