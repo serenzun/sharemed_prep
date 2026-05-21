@@ -1,0 +1,17 @@
+---
+title: "turbidity"
+output: html_document
+date: "2022-12-07"
+---
+
+```{r setup, include=FALSE}
+tur_spring<-stack(file.path("G:/.shortcut-targets-by-id/1GVWBJQfIgMX_KPLyupBkr_tk8qtR9P5W/Seasonal_kd490/dataset-oc-med-opt-olci-l4-kd490_300m_monthly-rt_1639401307069_spring.nc"))
+tur_fall<-stack(file.path("G:/.shortcut-targets-by-id/1GVWBJQfIgMX_KPLyupBkr_tk8qtR9P5W/Seasonal_kd490/dataset-oc-med-opt-olci-l4-kd490_300m_monthly-rt_1639407579520_fall.nc"))
+tur_summer<-stack(file.path("G:/.shortcut-targets-by-id/1GVWBJQfIgMX_KPLyupBkr_tk8qtR9P5W/Seasonal_kd490/dataset-oc-med-opt-olci-l4-kd490_300m_monthly-rt_1639401806961_summer.nc"))
+turb <- stack(tur_fall,tur_summer,tur_spring)
+turb_mean <- calc(turb,mean)
+plot(turb_mean)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

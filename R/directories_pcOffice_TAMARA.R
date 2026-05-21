@@ -1,6 +1,6 @@
 ##Directories:
 #dir_prep<-here::here("prep")
-dir_B<-file.path ("H:/big") #virtual machine
+dir_B<-file.path ("G:/Altri computer/Il mio computer/big") #virtual machine
 
 #rastFolder <- file.path("C:/Users/szunino/Documents/github/Atl_ohi/prep/FIS/annual_catch/")
 
